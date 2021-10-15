@@ -14,10 +14,10 @@ export default {
     colors: {
       primary,
       notification,
-      text: '#000',
-      background: '#fff',
-      card: '#fafafa',
-      border: 'rgba(0,0,0,.1)',
+      text: '#515151',
+      background: '#fafafa',
+      card: '#fff',
+      border: 'rgba(0,0,0,.05)',
     }
   },
   dark: {
@@ -27,7 +27,8 @@ export default {
       notification,
       text: '#fff',
       background: '#000',
-      card: '#4f535e',
+      // card: '#0d0d0d',
+      card: '#111111',
       border: 'rgba(255,255,255,.1)',
     }
   },

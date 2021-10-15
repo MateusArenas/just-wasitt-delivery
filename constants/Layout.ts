@@ -9,4 +9,7 @@ export default {
     height,
   },
   isSmallDevice: width < 375,
+  isDevice: width < 767,
+  isTablet: width > 767 && width < 991,
+  isDesktop: width > 992,
 };

@@ -4,13 +4,14 @@
  */
 
  import { Ionicons, MaterialIcons } from '@expo/vector-icons';
- import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
- import { createStackNavigator } from '@react-navigation/stack';
+ import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
+ import { createStackNavigator, StackScreenProps } from '@react-navigation/stack';
  import * as React from 'react';
+ import { Image, View } from 'react-native'
  
  import Colors from '../../constants/Colors';
  import useColorScheme from '../../hooks/useColorScheme';
- import { BottomTabParamList } from '../../types';
+ import { BottomTabParamList, RootStackParamList } from '../../types';
  import TabCartNavigator from './TabCartNavigator';
  import TabExploreNavigator from './TabExploreNavigator';
  import TabHomeNavigator from './TabHomeNavigator';
@@ -18,44 +19,51 @@
 import { useFocusEffect, useTheme } from '@react-navigation/native';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import IconButton from '../../components/IconButton';
+import AuthContext from '../../contexts/auth';
+import { writeAndress } from '../../utils';
+import { TextInput } from 'react-native-gesture-handler';
+import { BlurView } from 'expo-blur';
  
  const BottomTab = createBottomTabNavigator<BottomTabParamList>();
  
- export default function BottomTabNavigator() {
-  const { colors } = useTheme();
-
-  const rootNavigation = useRootNavigation()
+ export default function BottomTabNavigator({
+  navigation,
+  route
+ }: StackScreenProps<RootStackParamList, 'Root'>) {
+  const { signed, andress } = React.useContext(AuthContext)
+  const { colors, dark } = useTheme();
 
   useFocusEffect(React.useCallback(() => {
-    rootNavigation.setOptions({
-      headerTintColor: colors.text,
-      headerTitle: '',
-      headerLeft: ({ tintColor }) => (
-        <IconButton 
-          name="expand-more" color={tintColor} size={24}
-          onPress={() => rootNavigation.navigate('Andress')} 
-          label="Estr. do Carneiro" 
-        />
-      ),
-      headerRight: ({ tintColor }) => (
-        <IconButton onPress={() => rootNavigation.navigate('Account')} name="account-circle" size={24} color={tintColor} />
-      ),
+    navigation.setOptions({
+      headerShown: false,
     });
-  }, [rootNavigation]))
- 
+  }, []))
+
    return (
      <BottomTab.Navigator
-       initialRouteName="TabExplore"
+       initialRouteName="TabHome"
        tabBarOptions={{ 
+          keyboardHidesTabBar: true,
+          style: { backgroundColor: 'transparent' },
           activeTintColor: colors.primary, 
           labelStyle: { marginBottom: 3 },
           // showLabel: false
-        }}>
+        }}
+        tabBar={props => (
+          <BlurView style={[{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0
+          }]} intensity={100} tint={dark ? 'dark' : 'light'} >
+            <BottomTabBar {...props}/>
+          </BlurView>
+        )}
+        >
         <BottomTab.Screen
           name="TabHome"
           component={TabHomeNavigator}
           options={{
             title: 'Home',
+            tabBarLabel: () => <></>,
             tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
           }}
         />
@@ -64,6 +72,7 @@ import IconButton from '../../components/IconButton';
          component={TabExploreNavigator}
          options={{
            title: 'Explorar',
+           tabBarLabel: () => <></>,
            tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
          }}
        />
@@ -72,6 +81,7 @@ import IconButton from '../../components/IconButton';
          component={TabCartNavigator}
          options={{
            title: 'Carrinho',
+           tabBarLabel: () => <></>,
            tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
          }}
        />
@@ -79,8 +89,9 @@ import IconButton from '../../components/IconButton';
          name="TabStoreMain"
          component={TabStoreMainNavigator}
          options={{
-           title: 'Minha Loja',
-           tabBarIcon: ({ color }) => <TabBarIcon name="store" color={color} />,
+           title: 'Perfil',
+           tabBarLabel: () => <></>,
+           tabBarIcon: ({ color }) => <TabBarIcon name="account-circle" color={color} />,
          }}
        />
      </BottomTab.Navigator>
@@ -90,6 +101,7 @@ import IconButton from '../../components/IconButton';
  // You can explore the built-in icon families and icons on the web at:
  // https://icons.expo.fyi/
  function TabBarIcon(props: { name: React.ComponentProps<typeof MaterialIcons>['name']; color: string }) {
-   return <MaterialIcons size={24} style={{ marginBottom: -3 }} {...props} />;
- }3
+  //  return <MaterialIcons size={24} style={{ marginBottom: -3 }} {...props} />;
+   return <MaterialIcons size={24} {...props} />;
+ }
  

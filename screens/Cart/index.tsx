@@ -1,22 +1,330 @@
-import React from 'react';
-import { TouchableWithoutFeedback } from 'react-native';
-import { View, Text } from '../../components/Themed';
+import { useFocusEffect } from '@react-navigation/core';
+import { HeaderBackButton, HeaderTitle, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { FlatList, TouchableWithoutFeedback, useWindowDimensions, Image, Text, View, TouchableOpacity } from 'react-native';
 import Colors from '../../constants/Colors';
-import useRootNavigation from '../../hooks/useRootNavigation';
 
+import useRootNavigation from '../../hooks/useRootNavigation';
+import * as BagService from '../../services/bag'
+import { BottomTabParamList } from '../../types';
+import useService from '../../hooks/useService'
+import Loading from '../../components/Loading';
+import Refresh from '../../components/Refresh';
+import NotFound from '../../components/NotFound';
+import Card from '../../components/Card';
+import IconButton from '../../components/IconButton';
+import { useScrollToTop, useTheme } from '@react-navigation/native';
+import AuthContext from '../../contexts/auth';
+import { writePrice } from '../../utils';
+import { MaterialIcons } from '@expo/vector-icons';
+import TextButton from '../../components/TextButton';
+import { PullToRefreshView } from '../../components/PullToRefreshView';
+import useLoadScreen from '../../hooks/useLoadScreen';
+import BottomHalfModalContext from '../../contexts/BottomHalfModal';
+import CardLink from '../../components/CardLink';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 // import { Container } from './styles';
 
-const Cart: React.FC = () => {
+export default function Cart({ 
+  navigation,
+  route
+} : StackScreenProps<BottomTabParamList, 'TabCart'>) {
+  const top = useHeaderHeight()
+  const bottom = useContext(BottomTabBarHeightContext) || 0
+  
   const rootNavigation = useRootNavigation()
+  const ref = React.useRef<FlatList>(null)
+  const [innerScrollTop, setInnerScrollTop] = React.useState(0)
+
+  const [selecteds, setSelecteds] = React.useState<Array<string>>([])
+  const [editMode, setEditMode] = React.useState(false)
+  const { colors } = useTheme()
+  const { user } = React.useContext(AuthContext)
+  const { 
+    response, 
+    loading, 
+    disabled,
+    refreshing,
+    onLoading,
+    onService, 
+    onRefresh 
+  } = useLoadScreen<BagService.bagData>(React.useCallback(async () => await BagService.index({ userId: user?._id }), [user]))
+  useEffect(() => { onLoading() }, [user])
+
+  useScrollToTop(ref)
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.dangerouslyGetParent()?.addListener('tabPress', (e) => {
+      if (innerScrollTop <= 2 && !refreshing) {
+        ref.current?.scrollToOffset({ offset: 0, animated: true })
+        onRefresh()
+      }
+    });
+    return unsubscribe;
+  }, [navigation, innerScrollTop, onRefresh, refreshing]);
+
+  const onScroll = React.useCallback(event => {
+    setInnerScrollTop(event?.nativeEvent?.contentOffset?.y);
+  }, [setInnerScrollTop])
+
+  const BottomHalfModal = React.useContext(BottomHalfModalContext)
+
+  useFocusEffect(React.useCallback(() => {
+    navigation.setOptions({
+      headerTitle: props => 
+        <HeaderTitle {...props}
+          children={
+            (editMode && selecteds?.length) ?  
+              selecteds?.length === 1 ? `${selecteds?.length} pedido selecionado` 
+              : `${selecteds?.length} pedidos selecionados` 
+            : props.children
+          }
+        />
+      ,
+      headerRight: ({ tintColor }) => (
+        <View style={{ flexDirection: 'row', paddingHorizontal: 10 }}>
+          {response?.data?.length > 0 &&
+          <TextButton 
+            label={editMode ? selecteds.length > 0 ? 'Fazer' : 'Tudo' : 'Editar'}
+            fontSize={18}
+            color={colors.primary}
+            onPress={() => (editMode && selecteds.length === 0) ? 
+              setSelecteds(response?.data?.map(item => item?.store?.name))
+              : setEditMode(true)
+            }
+            onPressed={() => (editMode && selecteds.length > 0) && 
+              BottomHalfModal.show(modalize =>
+              <FlatList 
+                data={[
+                  { title: 'Excluir', icon: 'close', onPress: () => onClear(selecteds) },
+                  { title: 'Arquivar', icon: 'arrow-circle-down', onPress: () => {} },
+                ]}
+                keyExtractor={(item, index) => `${item?.title}-${index}`}
+                renderItem={({ item, index }) => 
+                  <CardLink border={index !== 1}
+                    title={item?.title}
+                    // subTitle={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
+                    color={colors.primary}
+                    onPress={item?.onPress}
+                    onPressed={modalize?.current?.close}
+                    rightLabel={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
+                    left={
+                      <MaterialIcons style={{ padding: 10 }}
+                        name={item?.icon as any}
+                        size={24}
+                        color={colors.border}
+                      />
+                    }
+                  />
+                }
+              />
+            )}
+          />}
+        </View>
+      ),
+      headerLeft: props => editMode 
+      ? <HeaderBackButton {...props} label={'Sair'} onPress={() => {
+          setEditMode(false)
+          setSelecteds([])
+        }}/> 
+      : props.canGoBack && <HeaderBackButton {...props} />,
+    });
+  }, [setEditMode, editMode, setSelecteds, selecteds, response]))
+
+  function onSelected (id: string) {
+    if (selecteds?.find(item => item === id)) {
+      setSelecteds(selecteds => selecteds?.filter(item => item !== id))
+    } else {
+      setSelecteds(selecteds => [...selecteds, id])
+    }
+  }
+
+  async function onClear (selecteds: Array<string>) {
+    try {
+      selecteds.map(onRemove)
+      setSelecteds([])
+      setEditMode(false)
+    } catch (err) {}
+  }
+
+  async function onRemove (store: string) {
+    try {
+      await onService(async () => {
+        try {
+          await BagService.remove({ id: store, userId: user?._id })
+          return response.data?.filter(item => item?.store?.name !== store)
+        } catch (err) {}
+      })
+      rootNavigation.refresh('Root')
+    } catch (err) {}
+  }
+
+  if (loading) return <Loading />
+  if (!response.network) return <Refresh onPress={() => navigation.replace('TabCart')}/>
+  if (!response.ok) return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'red' }} >
-      <Text>CART</Text>      
-      <TouchableWithoutFeedback onPress={() => rootNavigation.navigate('Checkout', { store: 'Cagaio' })}>
-        <Text lightColor={Colors.light.colors.text} darkColor={Colors.dark.colors.text} >To Sender</Text>
-      </TouchableWithoutFeedback>
+    <View style={{ flex: 1 }}>
+      <PullToRefreshView
+        offset={top}
+        disabled={editMode || disabled}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        <FlatList style={{ flex: 1 }} ref={ref}
+          contentContainerStyle={{ paddingTop: top, paddingBottom: bottom }}
+          scrollIndicatorInsets={{ top, bottom }}
+          ListHeaderComponentStyle={{ width: '100%' }}
+          ListHeaderComponent={
+            <View style={{ 
+              padding: 10,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              borderBottomWidth: 1, borderColor: colors.border
+            }}>
+              <TextButton 
+                label={'Lista de salvos'}
+                color={colors.primary}
+                fontSize={16}
+                onPress={() => navigation.navigate('Saved')}
+              />
+              <TextButton 
+                label={'Lista de favoritos'}
+                color={colors.primary}
+                fontSize={16}
+                onPress={() => navigation.navigate('Favorite')}
+              />
+            </View>
+          } 
+          onScroll={onScroll}
+          // contentContainerStyle={{ borderTopWidth: 1, borderColor: colors.border }}
+          data={response?.data}
+          keyExtractor={(item, index) => `${item?._id}-${index}`}
+          renderItem={({ item } : { item: BagService.bagData }) => (
+            <CartBag 
+                editMode={editMode}
+                selected={(!!selecteds?.find(id => id === item?.store?.name) && editMode)}
+                onPress={() => editMode ? onSelected(item?.store?.name) 
+                  : navigation.navigate('Bag', { store: item?.store?.name })
+                }
+                uri={item?.store?.uri}
+                name={item?.store?.name}
+                items={item?.bundles?.map(i => ({ uri: i?.product?.uri, quantity: i?.quantity }))}
+                price={item?.bundles?.map(i => i?.product?.price*i?.quantity)?.reduce((accum, curr) => accum + curr, 0)}
+              /> 
+          )}
+        />
+      </PullToRefreshView>
+      
     </View>
   )
 }
 
-export default Cart;
+interface CartProductProps {
+  onPress?: () => any
+  onLongPress?: () => any
+  items?: Array<{ uri: string, quantity: number }>
+  numberOfItems?: number
+  selected?: boolean
+  editMode?: boolean
+  uri: string
+  name: string
+  about?: string
+  price: number
+}
+const CartBag: React.FC<CartProductProps> = ({
+  uri,
+  name,
+  about,
+  price,
+  onPress,
+  onLongPress,
+  editMode,
+  selected,
+  items,
+  numberOfItems=4
+}) => {
+  const { width } = useWindowDimensions()
+  const { colors } = useTheme()
+  
+  return (
+      <View style={{ 
+        width, 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        backgroundColor: selected ? colors.card : colors.background,
+        borderBottomWidth: 1, borderColor: colors.border,
+      }}>
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity onPress={onPress} onLongPress={onLongPress}>
+              <View style={{ padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+              {editMode && 
+                  <View style={{ padding: 10 }}>
+                    {
+                      selected ? 
+                        <MaterialIcons 
+                          name='check-circle-outline'
+                          size={24}
+                          color={colors.primary}
+                        />
+                      : <MaterialIcons 
+                          name="circle"
+                          size={24}
+                          color={colors.border}
+                        />
+                    }
+                  </View>
+                }
+                <View style={{ flex: 1, padding: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Image style={{ height: 75, width: 75, backgroundColor: colors.border, borderRadius: 60, borderWidth: 1, borderColor: colors.border }} source={{ uri }} />
+                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                    <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{name}</Text>
+                    {about && <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .5 }}>{about}</Text>}
+                    <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{writePrice(price)}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                      {items.slice(0, numberOfItems).map(item => (
+                        <View style={{ position: 'relative' }}>
+                          <Image 
+                            style={{ margin: 2, height: 38, width: 38, backgroundColor: colors.border, borderRadius: 4, borderWidth: 1, borderColor: colors.border }} 
+                            source={{ uri: item?.uri }} 
+                          />
+                          <View style={{ 
+                            position: 'absolute', left: -2, bottom: -2, 
+                            width: 20, height: 20, 
+                            backgroundColor: colors.card,
+                            borderRadius: 20, 
+                            borderWidth: 1, borderColor: colors.primary,
+                          }}>
+                            <View style={{ 
+                              flex: 1,
+                              borderRadius: 20, 
+                              backgroundColor: selected ? colors.border : colors.card, 
+                              alignItems: 'center', justifyContent: 'center', 
+                             }}>
+                              <Text numberOfLines={1} style={{ 
+                                alignSelf: 'center', textAlign: 'center',
+                                color: colors.primary, fontSize: 12, fontWeight: 'bold' 
+                              }}>{item?.quantity}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                      {items.length > numberOfItems && <View style={{ margin: 2, height: 38, width: 38, backgroundColor: colors.border, borderRadius: 80, alignItems: 'center', justifyContent: 'center' }} >
+                        <Text numberOfLines={1} style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>{`+${items.length}`}</Text>
+                      </View>}
+                    </View>
+                  </View>
+                </View>
+                {!editMode && <MaterialIcons style={{ padding: 10 }}
+                  name="chevron-right"
+                  size={24}
+                  color={colors.border}
+                />}
+              </View>
+            </TouchableOpacity>
+          </View>
+
+      </View>
+  )
+}

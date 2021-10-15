@@ -1,50 +1,55 @@
 import * as React from 'react';
 
-import { createStackNavigator, StackScreenProps } from "@react-navigation/stack"
+import { createStackNavigator, HeaderTitle, StackScreenProps } from "@react-navigation/stack"
 import { BottomTabParamList, TabHomeParamList } from "../../types"
 
 import HomeScreen from '../../screens/Home'
 import IconButton from '../../components/IconButton';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import { useFocusEffect, useTheme } from '@react-navigation/native';
+import AuthContext from '../../contexts/auth';
+import { writeAndress } from '../../utils';
+import { TouchableWithoutFeedback, Image, TextInput } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { View } from '../../components/Themed';
+import SearchTabNavigator from '../SearchTabNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 
 const TabHomeStack = createStackNavigator<TabHomeParamList>()
 
 function TabHomeNavigator({ 
-  navigation 
+  navigation,
+  route
 } : StackScreenProps<BottomTabParamList, 'TabHome'>) {
-  const { colors } = useTheme();
-
-  const rootNavigation = useRootNavigation()
-
-  useFocusEffect(React.useCallback(() => {
-    rootNavigation.setOptions({
-      headerShown: true,
-    });
-  }, [rootNavigation]))
+  const InputRef = React.useRef<TextInput>()
+  const [category, setCategory] = React.useState(
+    route.params?.category === 'main' || !route.params?.category ? 
+    'main' : route.params?.category
+  )
+  const { andress } = React.useContext(AuthContext)
+  const { colors, dark } = useTheme();
 
   return (
-    <TabHomeStack.Navigator headerMode="none"
+    <TabHomeStack.Navigator headerMode="screen"
+      initialRouteName="Main"
       screenOptions={{ 
-        headerStyle: { borderBottomColor: colors.primary },
-        headerTintColor: colors.text 
+        headerTintColor: colors.text,
+        headerStyle: { elevation: 0, shadowColor: 'transparent', borderBottomWidth: .2, borderColor: colors.border },
+        headerBackTitleVisible: false,
+        headerBackImage: ({ tintColor }) => <MaterialIcons name="chevron-left" size={24*1.5} color={tintColor} />,
+        headerTransparent: true,
+        headerBackground: ({ style }) => (
+          <BlurView style={[style, { flex: 1 }]} intensity={100} tint={dark ? 'dark' : 'light'} />
+        ),
       }}
     >
       <TabHomeStack.Screen
         name="Main"
         component={HomeScreen}
+        initialParams={{ category: route.params?.category }}
         options={{ 
-          headerTitle: '',
-          headerLeft: ({ tintColor }) => (
-            <IconButton 
-              name="expand-more" color={tintColor} size={24}
-              onPress={() => rootNavigation.navigate('Andress')} 
-              label="Estr. do Carneiro" 
-            />
-          ),
-          headerRight: ({ tintColor }) => (
-            <IconButton onPress={() => {}} name="account-circle" size={24} color={tintColor} />
-          ),
+          title: 'Wassit',
         }}
       />
     </TabHomeStack.Navigator>
