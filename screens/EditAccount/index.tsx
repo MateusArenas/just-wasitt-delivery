@@ -1,6 +1,6 @@
 import { StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useContext } from 'react';
-import { useWindowDimensions, View, Text, Image } from 'react-native';
+import { Clipboard, useWindowDimensions, View, Text, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView } from 'react-native-tab-view';
 import CustomTopTabBar from '../../components/CustomTopTabBar';
@@ -19,6 +19,8 @@ import IconButton from '../../components/IconButton';
 import { userData } from '../../services/auth';
 import { writeAndress } from '../../utils';
 import useRootNavigation from '../../hooks/useRootNavigation';
+import TextButton from '../../components/TextButton';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function EditAccount({
   navigation,
@@ -50,7 +52,7 @@ export default function EditAccount({
 
   const onSubimit = React.useCallback(async () => { 
     try {
-      onService('update', state)
+      onService('update', { body: state })
       // const signed = await signIn(email, password) 
       // if (signed) navigation.replace('Root')
     } catch (err) {}
@@ -59,17 +61,17 @@ export default function EditAccount({
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       headerRight: ({ tintColor }) => (
-        <SafeAreaView style={{ flexDirection: 'row' }}>
-          <IconButton style={{ padding: 20 }}
-            name={'check'}
-            size={24}
+        <View style={{ flexDirection: 'row' }}>
+          <TextButton style={{ paddingHorizontal: 20 }}
+            label={'Confirmar'}
+            fontSize={16}
             color={colors.primary}
             onPress={onSubimit}
           />
-        </SafeAreaView>
+        </View>
       ),
     });
-  }, [onSubimit]))
+  }, [onSubimit, state]))
 
   const [index, setIndex] = React.useState(0)
   const [routes] = React.useState([
@@ -128,7 +130,7 @@ const MainRoute: React.FC<{
         value={state?.email} 
         onChangeText={email => onChangeState({ ...state, email })}
       />
-      <TextInputLabel secureTextEntry
+      <TextInputLabel type={'cel-phone'}
         label={'Telefone'}
         color={colors.text} 
         placeholder="Telefone" 
@@ -142,21 +144,35 @@ const MainRoute: React.FC<{
 const ImageRoute: React.FC<{
   value: string
   onChangeValue: (uri: string) => any
-}> = () => {
+}> = ({ value, onChangeValue }) => {
   const { colors } = useTheme()
   return (
     <View style={{ flex: 1, height: 250, alignItems: 'center', justifyContent: 'center' }}>
-      <IconButton 
-        style={{ opacity: .5, 
-          padding: 20, 
-          borderColor: colors.text, borderWidth: 4, 
-          borderRadius: 200 
-        }}
-        name="photo-camera"
-        size={24*4}
-        color={colors.text}
-        onPress={() => {}}
-      />
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        {!value ? <MaterialIcons 
+          style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
+          name="photo-camera"
+          size={24*4}
+          color={colors.border}
+        /> : 
+        <View style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200, overflow: 'hidden' }}>
+          <Image source={{ uri: value, width: 24*4, height: 24*4 }} style={{ borderRadius: 200 }}/>
+        </View>
+        }
+      </TouchableOpacity>
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        <Text style={{ 
+          color: colors.primary, 
+          fontWeight: '500', 
+          fontSize: 16, padding: 10
+        }}>{'Alterar Imagem'}</Text>
+      </TouchableOpacity>
     </View>
   )
 }

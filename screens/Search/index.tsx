@@ -241,9 +241,9 @@ const ProductsRoute: React.FC<ProductsRouteProps> = ({
                 <ImageBackground source={{ uri: item?.uri }}
                   style={{ 
                     margin: 10,
-                    width: 60, height: 60, 
-                    borderRadius: 60, backgroundColor: colors.background,
-                    borderWidth: 1, borderColor: colors.border,
+                    width: 60, height: 60, overflow: 'hidden',
+                    borderRadius: 80,
+                    // borderWidth: 1, borderColor: colors.border,
                     alignItems: 'center', justifyContent: 'center'
                   }}
                 >

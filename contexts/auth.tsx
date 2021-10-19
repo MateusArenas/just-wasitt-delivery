@@ -19,7 +19,7 @@ interface AuthContextData {
   error: errorData
   loading: boolean
   refresh: boolean
-  signIn: (email: string, password: string, refresh?: boolean) => Promise<any>
+  signIn: (email?: string, password?: string, refresh?: boolean) => Promise<any>
   signUp: (email: string, password: string, name: string) => Promise<any>
   signOut: () => any
   removeSign: (_id: string) => any 
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC = ({ children }) => {
 
   console.log('all users', [...users, visitor]);
 
-  async function signIn (email: string, password: string, refresh?: boolean) {
+  async function signIn (email?: string, password?: string, refresh?: boolean) {
     try {
       if (!email && !password) return signVisitor()
       refresh ? setRefresh(true) : setLoading(true)

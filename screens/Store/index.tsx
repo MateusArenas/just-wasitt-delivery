@@ -51,7 +51,14 @@ function Store({
   
   const ServiceCart = useService<BagService.bagData>(BagService, 'search', { id: store, userId: user?._id }, [user])
   useFocusEffect(useCallback(() => { ServiceCart.onService('search', { id: store, userId: user?._id }) }, [user]))
-  const totalPrice = ServiceCart?.response?.data[0]?.bundles?.map(cart => cart?.product?.price * cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
+  const totalPrice = ServiceCart?.response?.data[0]?.bundles?.map(({ product, quantity }) => 
+    ( product?.price - 
+      (
+        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
+        * product?.price
+      )
+    ) * quantity
+  )?.reduce((acc, cur) => acc + cur, 0) 
   const totalQuantity = ServiceCart?.response?.data[0]?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
 
   const rootNavigation = useRootNavigation()
@@ -195,7 +202,7 @@ function Store({
         
       </PullToRefreshView>
 
-      {ServiceCart?.response?.data?.length > 0 && 
+      {(ServiceCart?.response?.data?.length > 0 && totalPrice) && 
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
         onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
       >
@@ -262,24 +269,29 @@ const Main: React.FC<{ store: StoreDate} & { onLayout?: (event: LayoutChangeEven
       // data={[{ uri: 'https://i.pinimg.com/originals/44/10/b3/4410b3605284deaed85c4e89ab2f4b5c.jpg' }, { uri: 'https://i.pinimg.com/originals/40/21/73/402173fd8d2200ec9c808dd28fee757d.jpg' }]}
       renderItem={({ item }) => 
         <TouchableOpacity onPress={() => navigation.navigate('Promotion', { store, id: item?._id })}>
-          <View style={{ width: width-40, height: 160, padding: 20, marginVertical:10, paddingRight: 5 }}>
+          <View style={{ 
+            width: width-20, height: 160, 
+            padding: 10, paddingRight: 5, paddingBottom: 0,
+            marginVertical: 10, marginBottom: 0, 
+          }}>
             <Image style={{ 
               width: '100%', height: '100%',
               backgroundColor: colors.background, borderRadius: 4, 
             }}
-              source={{ uri: 'https://i.pinimg.com/originals/44/10/b3/4410b3605284deaed85c4e89ab2f4b5c.jpg' }}
+              source={{ uri: item?.uri ? item?.uri : 'https://i.pinimg.com/originals/44/10/b3/4410b3605284deaed85c4e89ab2f4b5c.jpg' }}
             />
           </View>
         </TouchableOpacity>
       }
     />
 
-    <ProfileCard 
-       statusColor={isOpen ? colors.primary : 'red'}
-       status={isOpen ? 'ABERTO' : 'FECHADO'}
-       title={`${data?.city} - ${data?.state}`}
-       about={data?.about}
-       onPress={() => rootNavigation.navigate('StoreInfo', { store })}
+    <ProfileCard style={{ padding: 0 }}
+      uri={data?.uri}
+      statusColor={isOpen ? colors.primary : 'red'}
+      status={isOpen ? 'ABERTO' : 'FECHADO'}
+      title={`${data?.city} - ${data?.state}`}
+      about={data?.about}
+      onPress={() => rootNavigation.navigate('StoreInfo', { store })}
     />
     <ProfileStatistic 
       data={[
@@ -317,11 +329,11 @@ const TabTop: React.FC<{ store: StoreDate }> = ({ store: data }) => {
   const { store } = route.params
   
   const [follower, setFollower] = useState({ checked: false, loading: false })
+  const following = !!data?.followers?.find(item => item?.user === user?._id)
 
   useEffect(() => {
-    const checked = !!data?.followers?.find(item => item?.user === user?._id)
-    setFollower(state => ({ ...state, checked }))
-  }, [setFollower, user, data])
+    setFollower(state => ({ ...state, checked: following }))
+  }, [setFollower, following])
 
   async function onFollower () {
     setFollower(state => ({ ...state, loading: true }))
@@ -349,7 +361,7 @@ const TabTop: React.FC<{ store: StoreDate }> = ({ store: data }) => {
   }, [setSaved, user, data])
 
   async function onSaved () {
-    setFollower(state => ({ ...state, loading: true }))
+    setSaved(state => ({ ...state, loading: true }))
     try {
       if (saved?.checked) {
         const response = await SavedService.remove({ _id: data?._id, userId: user?._id })
@@ -375,6 +387,7 @@ const TabTop: React.FC<{ store: StoreDate }> = ({ store: data }) => {
 
       {!data?.self && !!signed && <View style={{ flex: 1, padding: 10 }}>
         <ContainerButton border transparent
+          color={follower?.checked ? 'red' : colors.text}
           title={follower?.checked ? 'Deixar' : 'Seguir'}
           loading={follower?.loading}
           onSubimit={onFollower}

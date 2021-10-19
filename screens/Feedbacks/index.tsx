@@ -84,14 +84,14 @@ export default function Feedbacks({
                   <TextButton style={{ padding: 0 }}
                     label="Responder"
                     color={colors.primary}
-                    fontSize={12}
+                    fontSize={14}
                     onPress={() => navigation.navigate('NewFeedback', { store, reply: item?._id })}
                   />
                 </View>
 
                 {!!item?.replies?.length && <View style={{ padding: 10 }}>
                   <Text style={{ padding: 10,
-                    fontWeight: '500', fontSize: 12,
+                    fontWeight: '500', fontSize: 14,
                     color: colors.text, 
                   }}>{'Ocultar resposta'}</Text>
                   {item?.replies?.map(reply => (
@@ -104,7 +104,7 @@ export default function Feedbacks({
                         <TextButton style={{ padding: 0 }}
                           label="Responder"
                           color={colors.primary}
-                          fontSize={12}
+                          fontSize={14}
                           onPress={() => navigation.navigate('NewFeedback', { store, reply: item?._id })}
                         />
                       </View>

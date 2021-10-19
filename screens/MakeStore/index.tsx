@@ -1,27 +1,23 @@
 import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
 import { HeaderTitle, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useContext, useEffect } from 'react';
-import { View, KeyboardAvoidingView, StyleSheet, Text, Platform, Button, Image, TextInputProps, ColorValue, useWindowDimensions, TouchableOpacity, FlatList, Keyboard } from 'react-native';
+import { Clipboard, View, KeyboardAvoidingView, StyleSheet, Text, Platform, Button, Image, TextInputProps, ColorValue, useWindowDimensions, TouchableOpacity, FlatList, Keyboard } from 'react-native';
 import { TouchableWithoutFeedback, TextInput, ScrollView } from 'react-native-gesture-handler';
 import AuthContext from '../../contexts/auth';
 import { RootStackParamList } from '../../types';
-import ContainerButton from '../../components/ContainerButton';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import IconButton from '../../components/IconButton';
 import * as StoreService from '../../services/store';
 import * as ManageService from '../../services/manage';
-import useService from '../../hooks/useService';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import Loading from '../../components/Loading';
 import Refresh from '../../components/Refresh';
 import NotFound from '../../components/NotFound';
 import TextInputLabel from '../../components/TextInputLabel';
 import { TabView } from 'react-native-tab-view';
-import CustomTopTabBar from '../../components/CustomTopTabBar';
+import CustomTopTabBar, { TabViewRouteProps } from '../../components/CustomTopTabBar';
 import CustomBottomTabBar from '../../components/CustomBottomTabBar';
 import FormAndress from '../../components/FormAndress';
 import InputCheck from '../../components/InputCheck';
-import { TextInputMask } from 'react-native-masked-text'
 import { MaterialIcons } from '@expo/vector-icons';
 import TextButton from '../../components/TextButton';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
@@ -72,11 +68,11 @@ export default function MakeStore ({
   }, [data, setState])
 
   const [index, setIndex] = React.useState(0)
-  const [routes] = React.useState([
-    { key: 'main', title: 'Principais' },
-    { key: 'image', title: 'Foto' },
-    { key: 'config', title: 'Configurações' },
-    { key: 'andress', title: 'Endereço' },
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'main', icon: 'menu', title: 'Principais' },
+    { key: 'image', icon: 'photo-camera', title: 'Foto' },
+    { key: 'config', icon: 'device-hub', title: 'Configurações' },
+    { key: 'andress', icon: 'location-on', title: 'Endereço' },
   ])
 
   const renderScene = React.useCallback(({ route }) => {
@@ -115,47 +111,6 @@ export default function MakeStore ({
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       title: data?.name ? data?.name : 'Nova Loja',
-      headerTitle: ({ tintColor, children, ...props }) => !id ? 
-        <HeaderTitle tintColor={tintColor} {...props}>
-          {children}
-        </HeaderTitle>
-      :(
-        <IconButton style={{ padding: 0 }}
-          label={children} 
-          name="expand-more" color={colors.text} size={24}
-          onPress={() => BottomHalfModal.show(modalize => 
-            <FlatList 
-              data={data?.otherStores?.map(({ _id, name: store }) => ({
-                key: _id,
-                color: colors.text,
-                title: store,
-                onPress: () => navigation.replace('MakeStore', { id: _id })
-              })) || []}
-              keyExtractor={item => `${item?.key}`}
-              renderItem={({ item }) => 
-                <CardLink 
-                  title={item?.title}
-                  color={item?.color}
-                  onPress={item?.onPress}
-                  onPressed={modalize?.current?.close}
-                />
-              }
-              ListFooterComponent={
-                <View>
-                  {data?.self && 
-                    <CardLink border={false}
-                      title={'Criar Loja'}
-                      color={colors.primary}
-                      onPress={() => navigation.push('MakeStore')}
-                      onPressed={modalize?.current?.close}
-                    />
-                  }
-                </View>
-              }
-            />
-          )} 
-        />
-      ),
       headerRight: ({ tintColor }) => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TextButton style={{ paddingHorizontal: 20 }}
@@ -273,21 +228,35 @@ const MainRoute: React.FC<RouteProps> = ({ state, onChangeState }) => {
 const ImageRoute: React.FC<{
   value: string
   onChangeValue: (uri: string) => any
-}> = () => {
+}> = ({ value, onChangeValue }) => {
   const { colors } = useTheme()
   return (
     <View style={{ flex: 1, height: 250, alignItems: 'center', justifyContent: 'center' }}>
-      <IconButton 
-        style={{ opacity: .5, 
-          padding: 20, 
-          borderColor: colors.text, borderWidth: 4, 
-          borderRadius: 200 
-        }}
-        name="photo-camera"
-        size={24*4}
-        color={colors.text}
-        onPress={() => {}}
-      />
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        {!value ? <MaterialIcons 
+          style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
+          name="photo-camera"
+          size={24*4}
+          color={colors.border}
+        /> : 
+        <View style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200, overflow: 'hidden' }}>
+          <Image source={{ uri: value, width: 24*4, height: 24*4 }} style={{ borderRadius: 200 }}/>
+        </View>
+        }
+      </TouchableOpacity>
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        <Text style={{ 
+          color: colors.primary, 
+          fontWeight: '500', 
+          fontSize: 16, padding: 10
+        }}>{'Alterar Imagem'}</Text>
+      </TouchableOpacity>
     </View>
   )
 }

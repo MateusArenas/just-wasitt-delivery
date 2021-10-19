@@ -3,7 +3,7 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
 import { HeaderTitle, StackNavigationOptions, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useContext } from 'react';
-import { Text, TouchableOpacity, ImageBackground, useWindowDimensions, View, FlatList, TouchableWithoutFeedback } from 'react-native';
+import { Text, TouchableOpacity, Image, useWindowDimensions, View, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { useCollapsibleHeader, UseCollapsibleOptions } from 'react-navigation-collapsible';
 import IconButton from '../../components/IconButton';
 import { PullToRefreshView } from '../../components/PullToRefreshView';
@@ -155,36 +155,34 @@ export default function Explore ({
         keyExtractor={(item, index) => `${item?._id}-${index}`}
         renderItem={({ item: category } : { item: CategoryData }) => (
           <TouchableWithoutFeedback onPress={() => navigation.navigate('Categories', { category: category?.name })}>
-            <View style={{ padding: 4 }}>
+            <View style={{ padding: 4, width: (width/2) }}>
+                <BlurView intensity={100/1.25} tint="dark"
+                  style={{ 
+                    zIndex: 9,
+                    position: 'absolute', right: 10, bottom: 10,
+                    padding: 5, borderRadius: 10, overflow: 'hidden' 
+                  }} 
+                >
+                  <Text style={{ 
+                    color: 'white', 
+                    fontWeight: '500', 
+                    fontSize: 16, 
+                  }}>{`#${category?.name}`}</Text>
+                </BlurView>
                 <SwiperFlatList horizontal
+                  style={{ borderRadius: 4 , overflow: 'hidden' }}
                   contentContainerStyle={{ flexGrow: 1 }}
                   index={0}
                   autoplay 
                   autoplayLoop
+                  autoplayDelay={1}
                   pagingEnabled={false}
                   showPagination={false}
                   data={category?.products}
                   renderItem={({ item }) => 
-                    <ImageBackground
-                      source={item?.uri ? { uri: item?.uri } : require('../../assets/images/default-product.jpg')}
+                    <Image source={item?.uri ? { uri: item?.uri } : require('../../assets/images/default-product.jpg')}
                       style={{ width: (width/2), height: 140 }}
-                    >
-                      <View style={{ 
-                        flex: 1, justifyContent: 'flex-end', alignItems: 'flex-end', 
-                        backgroundColor: 'rgba(0,0,0,.2)',
-                        padding: 10
-                      }}>
-                        <BlurView intensity={100/1.25} tint="dark"
-                          style={{ padding: 5, borderRadius: 10, overflow: 'hidden' }} 
-                        >
-                          <Text style={{ 
-                            color: 'white', 
-                            fontWeight: '500', 
-                            fontSize: 16, 
-                          }}>{'#'+item?.name}</Text>
-                        </BlurView>
-                      </View>
-                    </ImageBackground>
+                    />
                   }
                 />
               {/* <ImageBackground

@@ -58,68 +58,109 @@ export default function Account({
           <IconButton style={{ padding: 0 }}
             label={user?._id ? user?.name ? user?.name : user?.email : 'Visitante'} 
             name="expand-more" color={colors.text} size={24}
-            onPress={() => BottomHalfModal.show(modalize =>
+            onPress={() => BottomHalfModal.show(modalize => 
               <FlatList 
-                data={users?.map(user => ({
-                  key: user?._id,
-                  title: user?._id ? user?.name ? user?.name : user?.email : 'Visitante',
-                  onPress: () => {
-                    signIn(user?.email, user?.password)
-                    rootNavigation.dispatch({
-                      ...StackActions.replace('Root', { screen: 'TabStoreMain' }),
-                      source: route.key,
-                    })
-                  }
-                })) || []}
-                keyExtractor={item => `${item?.key}`}
-                renderItem={({ item, index }) => 
-                  <CardLink
-                    title={item?.title}
-                    color={colors.text}
-                    border={(users?.length-1) !== index}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                    left={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={'account-circle'}
-                        size={24+10}
-                        color={colors.text}
-                      />
-                    }
-                    right={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={item?.key === user?._id  ? "check-circle" : "circle"}
+              ListHeaderComponentStyle={{ padding: 5 }}
+              ListHeaderComponent={
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {[
+                    { key: 0, icon: 'add', color: colors.primary, title: 'Nova', onPress: () => rootNavigation.navigate('SignUp') },
+                    { key: 1, icon: 'login', color: colors.text, title: 'Entrar', onPress: () => rootNavigation.navigate('SignIn') },
+                    { key: 2, icon: 'logout', color: 'red', title: 'Sair', onPress: () => signOut() },
+                  ].map(item => (
+                    <View key={item?.key} style={{ 
+                      padding: 10, paddingTop: 0,
+                      flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                      marginHorizontal: 5, alignItems: 'center', 
+                    }}>
+                      <IconButton style={{ padding: 20 }}
+                        name={item?.icon as any}
                         size={24}
-                        color={item?.key === user?._id ? colors.primary : colors.border}
+                        color={item?.color}
+                        onPress={item?.onPress}
+                        onPressed={modalize?.current?.close}
+                      />
+                      <Text style={{ color: item?.color, fontSize: 12, 
+                        position: 'absolute', bottom: 10
+                      }}>{item?.title}</Text>
+                    </View>
+                  ))}
+                </View>
+                // <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Produto'}</Text>
+              }
+              data={users?.filter(item => item?._id)?.map(item => ({
+                key: item?._id,
+                icon: item?._id === user?._id  ? "check-circle" : "circle",
+                color: item?._id === user?._id ? colors.primary : colors.text,
+                title: item?._id ? item?.name ? item?.name : item?.email : 'Visitante',
+                onPress: () => {
+                  signIn(item?.email, item?.password)
+                  rootNavigation.dispatch({
+                    ...StackActions.replace('Root', { screen: 'TabStoreMain' }),
+                    source: route.key,
+                  })
+                }
+              })) || []}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?.key}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0, borderBottomRightRadius: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== users?.filter(item => item?._id)?.length-1}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Visitante'}
+                    right={
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'account-circle'}
+                        size={24}
+                        color={signed ? colors.text : colors.primary}
                       />
                     }
+                    color={signed ? colors.text : colors.primary}
+                    onPress={() => {
+                      signIn()
+                      rootNavigation.dispatch({
+                        ...StackActions.replace('Root', { screen: 'TabStoreMain' }),
+                        source: route.key,
+                      })
+                    }}
+                    onPressed={modalize?.current?.close}
                   />
-                }
-                ListFooterComponent={
-                  <View style={{ 
-                    marginTop: 10,
-                    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' 
-                  }}>
-                    <View style={{ flex: 1, padding: 10 }}>
-                      <ContainerButton transparent border
-                        title={'Conta existente'}
-                        loading={false}
-                        onSubimit={() => rootNavigation.navigate('SignIn')}
-                        onSubimiting={modalize?.current?.close}
-                      />
-                    </View>
-                    <View style={{ flex: 1, padding: 10 }}>
-                      <ContainerButton transparent border
-                        title={'Nova conta'}
-                        loading={false}
-                        onSubimit={() => rootNavigation.navigate('SignUp')}
-                        onSubimiting={modalize?.current?.close}
-                      />
-                    </View>
-                  </View>
-                }
-              />
-              )} 
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )}  
           />
         </View>
       )
@@ -144,6 +185,7 @@ export default function Account({
                   paddingVertical: 10,
                   borderBottomWidth: 1, borderTopWidth: .5, borderColor: colors.border  
                 }}
+                  uri={user?.uri}
                   statusColor={colors.primary}
                   disabled={!signed}
                   onPress={() => rootNavigation.navigate('EditAccount', { id: user?._id })}

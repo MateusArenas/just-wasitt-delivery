@@ -157,64 +157,98 @@ export default function Home ({
             name="expand-more" color={colors.text} size={24}
             onPress={() => BottomHalfModal.show(modalize => 
               <FlatList 
-                data={andresses?.map(item => ({
-                  _id: item?._id,
-                  title: writeAndress(item),
-                  onPress: () => selectIn(item?._id)
-                })) || []}
-                keyExtractor={(item, index) => `${item?._id}-${index}`}
-                renderItem={({ item, index }) => 
-                  <CardLink border={signed ? index !== 1 : index !== 0}
-                    title={item?.title}
-                    color={colors.text}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                    right={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={item?._id === andress?._id  ? "check-circle" : "circle"}
+              ListHeaderComponentStyle={{ padding: 5 }}
+              ListHeaderComponent={
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {[
+                    { key: 0, icon: 'add', color: colors.primary, title: 'Novo', onPress: () => rootNavigation.navigate('Andress') },
+                    { key: 1, icon: 'edit', color: colors.text, title: 'Editar', onPress: () => {
+                      andress?._id === user?._id ? signed && rootNavigation.navigate('EditAccount', { id: user?._id })
+                      : rootNavigation.navigate('Andress', { id: andress?._id })
+                    } },
+                    { key: 2, icon: 'delete', color: 'red', title: 'Remover', onPress: () => {} },
+                  ].map(item => (
+                    <View key={item?.key} style={{ 
+                      padding: 10, paddingTop: 0,
+                      flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                      marginHorizontal: 5, alignItems: 'center', 
+                    }}>
+                      <IconButton style={{ padding: 20 }}
+                        name={item?.icon as any}
                         size={24}
-                        color={item?._id === andress?._id ? colors.primary : colors.border}
+                        color={item?.color}
+                        onPress={item?.onPress}
+                        onPressed={modalize?.current?.close}
+                      />
+                      <Text style={{ color: item?.color, fontSize: 12, 
+                        position: 'absolute', bottom: 10
+                      }}>{item?.title}</Text>
+                    </View>
+                  ))}
+                </View>
+                // <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Produto'}</Text>
+              }
+              data={andresses?.map(item => ({
+                _id: item?._id,
+                icon: item?._id === andress?._id  ? "check-circle" : "circle",
+                color: item?._id === andress?._id ? colors.primary : colors.text,
+                title: writeAndress(item),
+                onPress: () => selectIn(item?._id)
+              })) || []}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?._id}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === andresses?.length-1 ? 10 : 0, borderBottomRightRadius: index === andresses?.length-1 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === andresses?.length-1 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== andresses?.length-1}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Minha localização'}
+                    right={
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'my-location'}
+                        size={24}
+                        color={colors.text}
                       />
                     }
+                    color={colors.text}
+                    onPress={() => {}}
+                    onPressed={modalize?.current?.close}
                   />
-                }
-                ListFooterComponent={
-                  <View style={{ marginTop: 10 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <View style={{ flex: 1, padding: 10 }}>
-                        <ContainerButton transparent border
-                          title={'Usar localização'}
-                          loading={false}
-                          onSubimit={() => rootNavigation.navigate('Andress')}
-                          onSubimiting={modalize?.current?.close}
-                        />
-                      </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      {selected && <View style={{ flex: 1, padding: 10 }}>
-                        <ContainerButton transparent border
-                          title={'Editar endereço'}
-                          loading={false}
-                          onSubimit={() => {
-                            andress?._id === user?._id ? signed && rootNavigation.navigate('EditAccount', { id: user?._id })
-                            : rootNavigation.navigate('Andress', { id: andress?._id })
-                          }}
-                          onSubimiting={modalize?.current?.close}
-                        />
-                      </View>}
-                      <View style={{ flex: 1, padding: 10 }}>
-                        <ContainerButton transparent border
-                          title={'Novo endereço'}
-                          loading={false}
-                          onSubimit={() => rootNavigation.navigate('Andress')}
-                          onSubimiting={modalize?.current?.close}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                }
-              />
-            )} 
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )}  
           />
         </View>
       ),
@@ -280,7 +314,7 @@ export default function Home ({
                       borderRadius: 40, 
                       borderWidth: 1, borderColor: colors.border, 
                       backgroundColor: colors.border 
-                    }} source={{ uri: 'https://static-images.ifood.com.br/image/upload/t_high/logosgde/e28dd736-aa7e-438b-be05-123e27b621bd/202103031043_txRd_i.jpg' }}/>
+                    }} source={{ uri: category?.store?.uri ? category?.store?.uri : 'https://static-images.ifood.com.br/image/upload/t_high/logosgde/e28dd736-aa7e-438b-be05-123e27b621bd/202103031043_txRd_i.jpg' }}/>
                   }
                   onPress={() => navigation.navigate('Store', { store: category?.store?.name })}
                 />
@@ -309,9 +343,32 @@ export default function Home ({
                     index={0}
                     showPagination
                     data={category?.products}
-                    renderItem={({ item }) => 
+                    renderItem={({ item: product }) => 
                       <View style={{ width: width }}>
-                        <Product store={category?.store?.name} data={item} onPress={() => navigation.navigate('Product', { id: item?._id, store: category?.store?.name })}/>
+                        <Product store={category?.store?.name} data={product} onPress={() => navigation.navigate('Product', { id: product?._id, store: category?.store?.name })}/>
+                        
+                        <View style={{ paddingHorizontal: 10, backgroundColor: colors.card, flexDirection: 'row' }}>
+                          {[].concat(
+                            product?.categories?.map(item => ({ 
+                              _id: item?._id, name: `#${item?.name}`,
+                              onPress: () => navigation.navigate('Category', { store: category?.store?.name, id: item?._id })
+                            }))).concat( 
+                              product?.promotions?.map(item => ({ 
+                              _id: item?._id, name: `%${item?.name}`,
+                              onPress: () => navigation.navigate('Promotion', { store: category?.store?.name, id: item?._id })
+                            }))
+                          )?.map(item => (
+                            <TouchableOpacity key={item?._id} onPress={item?.onPress}>
+                              <Text style={{
+                                fontSize: 14, fontWeight: '500',
+                                color: colors.primary, 
+                                paddingVertical: 10, paddingRight: 10
+                              }}>
+                                {item?.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
                       </View>
                     }
                   />

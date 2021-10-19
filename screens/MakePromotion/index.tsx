@@ -1,6 +1,6 @@
 import { HeaderTitle, StackHeaderTitleProps, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { FlatList, ImageBackground, useWindowDimensions, View, Text, Keyboard, TouchableWithoutFeedback, TouchableOpacity, TextInput } from 'react-native';
+import { Clipboard, Image, FlatList, ImageBackground, useWindowDimensions, View, Text, Keyboard, TouchableWithoutFeedback, TouchableOpacity, TextInput } from 'react-native';
 import { RootStackParamList } from '../../types';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import {  } from '@react-navigation/material-top-tabs'
@@ -59,26 +59,27 @@ export default function MakePromotion ({
 
   useEffect(() => {
     if(data) {
+      setUri(data?.uri)
       setName(data?.name)
       setPercent(data?.percent)
       setAbout(data?.about)
       setProducts(data?.products?.map(item => typeof item?._id === 'string' ? item?._id : item))
     }
-  }, [data, setName, setProducts, setPercent, setAbout])
+  }, [data, setUri, setName, setProducts, setPercent, setAbout])
 
   const onSubmit = React.useCallback(async () => {
     if (!name && !signed) return null
     try {
       if(id) {
-        await onService(async () => await PromotionService.update({ id, store, body: { name, products, percent, about } }))
+        await onService(async () => await PromotionService.update({ id, store, body: { uri, name, products, percent, about } }))
       } else {
-        await onService(async () => await PromotionService.create({ store, body: { name, products, percent, about } }))
+        await onService(async () => await PromotionService.create({ store, body: { uri, name, products, percent, about } }))
       }
       Keyboard.dismiss()
       rootNavigation.refresh('Root')
       navigation.goBack()
     } catch (err) {}
-  }, [signed, name, id, products, percent, about])
+  }, [signed, uri, name, id, products, percent, about])
   
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
@@ -312,21 +313,35 @@ const PercentRoute: React.FC<{
 const ImageRoute: React.FC<{
   value: string
   onChangeValue: (uri: string) => any
-}> = () => {
+}> = ({ value, onChangeValue }) => {
   const { colors } = useTheme()
   return (
     <View style={{ flex: 1, height: 250, alignItems: 'center', justifyContent: 'center' }}>
-      <IconButton 
-        style={{ opacity: .5, 
-          padding: 20, 
-          borderColor: colors.text, borderWidth: 4, 
-          borderRadius: 200 
-        }}
-        name="photo-camera"
-        size={24*4}
-        color={colors.text}
-        onPress={() => {}}
-      />
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        {!value ? <MaterialIcons 
+          style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
+          name="photo-camera"
+          size={24*4}
+          color={colors.border}
+        /> : 
+        <View style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200, overflow: 'hidden' }}>
+          <Image source={{ uri: value, width: 24*4, height: 24*4 }} style={{ borderRadius: 200 }}/>
+        </View>
+        }
+      </TouchableOpacity>
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        <Text style={{ 
+          color: colors.primary, 
+          fontWeight: '500', 
+          fontSize: 16, padding: 10
+        }}>{'Alterar Imagem'}</Text>
+      </TouchableOpacity>
     </View>
   )
 }

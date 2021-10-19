@@ -121,9 +121,32 @@ export default function Categories({
                     index={0}
                     showPagination
                     data={category?.products}
-                    renderItem={({ item }) => 
+                    renderItem={({ item: product }) => 
                       <View style={{ width: width }}>
-                        <Product store={category?.store?.name} data={item} onPress={() => navigation.navigate('Product', { id: item?._id, store: category?.store?.name })}/>
+                        <Product store={category?.store?.name} data={product} onPress={() => navigation.navigate('Product', { id: product?._id, store: category?.store?.name })}/>
+                        
+                        <View style={{ paddingHorizontal: 10, backgroundColor: colors.card, flexDirection: 'row' }}>
+                          {[].concat(
+                            product?.categories?.map(item => ({ 
+                              _id: item?._id, name: `#${item?.name}`,
+                              onPress: () => navigation.navigate('Category', { store: category?.store?.name, id: item?._id })
+                            }))).concat( 
+                              product?.promotions?.map(item => ({ 
+                              _id: item?._id, name: `%${item?.name}`,
+                              onPress: () => navigation.navigate('Promotion', { store: category?.store?.name, id: item?._id })
+                            }))
+                          )?.map(item => (
+                            <TouchableOpacity key={item?._id} onPress={item?.onPress}>
+                              <Text style={{
+                                fontSize: 14, fontWeight: '500',
+                                color: colors.primary, 
+                                paddingVertical: 10, paddingRight: 10
+                              }}>
+                                {item?.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
                       </View>
                     }
                   />

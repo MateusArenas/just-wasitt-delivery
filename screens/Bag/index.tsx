@@ -118,39 +118,63 @@ export default function Bag({
               setSelecteds(data?.bundles?.map(item => item?._id))
               : setEditMode(true)
             }
-            onPressed={() => (editMode && selecteds.length > 0) && 
-              BottomHalfModal.show(modalize =>
+            onPressed={() => (editMode && selecteds.length > 0) &&  BottomHalfModal.show(modalize => 
               <FlatList 
-                data={[
-                  { title: 'Excluir', icon: 'close', onPress: () => onClear(selecteds) },
-                  { title: 'Arquivar', icon: 'archive', onPress: () => {} },
-                ]}
-                keyExtractor={(item, index) => `${item?.title}-${index}`}
-                renderItem={({ item, index }) => 
-                  <CardLink
-                    title={item?.title}
-                    color={colors.text}
-                    border={1 !== index}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                    left={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={item?.icon as any}
-                        size={24}
-                        color={colors.primary}
-                      />
-                    }
+              data={[]}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?.key}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === 0 ? 10 : 0, borderBottomRightRadius: index === 0 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === 0 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== 0}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Remover'}
                     right={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={"chevron-right"}
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'delete'}
                         size={24}
-                        color={colors.border}
+                        color={'red'}
                       />
                     }
+                    color={'red'}
+                    onPress={() => onClear(selecteds)}
+                    onPressed={modalize?.current?.close}
                   />
-                }
-              />
-            )}
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )}  
           />}
         </View>
       ),
@@ -242,7 +266,7 @@ export default function Bag({
         (
           item.product?.price - 
           (
-            (Math.max(...item?.product?.promotions?.map(item => item?.percent)) / 100 )
+            (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
             * item.product?.price
           )
         ) 
@@ -346,7 +370,7 @@ export default function Bag({
               }) : 'xxx'
             }
             subTitle={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
-              MaskService.toMask('money', (data?.store?.minDeliveryBuyValue | 0) as unknown as string, {
+              MaskService.toMask('money', data?.store?.minDeliveryBuyValue as unknown as string, {
                 precision: 2,
                 separator: ',',
                 delimiter: '.',
@@ -427,12 +451,12 @@ const CartProduct: React.FC<CartProductProps> = ({
                   <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{product?.name}</Text>
                   <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{comment ? comment : product?.about}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                    {product?.promotions?.length > 0 && 
                     <Text numberOfLines={1} style={{ marginRight: 5, color: colors.primary, fontSize: 14, fontWeight: '500', opacity: .8 }}>{
                       MaskService.toMask('money', 
-                    ((
-                      product?.price - 
+                    (( product?.price - 
                       (
-                        (Math.max(...product?.promotions?.map(item => item?.percent)) / 100 )
+                        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
                         * product?.price
                       )
                     ) 
@@ -443,9 +467,13 @@ const CartProduct: React.FC<CartProductProps> = ({
                         unit: 'R$ ',
                         suffixUnit: ''
                       })
-                    }</Text>
+                    }</Text>}
 
-                    <Text numberOfLines={1} style={{ textDecorationLine: 'line-through', color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{
+                    <Text numberOfLines={1} style={{ 
+                      textDecorationLine: product?.promotions?.length > 0 ? 'line-through' : 'none', 
+                      fontSize: 14, 
+                      color: colors.text, fontWeight: '500', opacity: .8 
+                    }}>{
                       MaskService.toMask('money', (product?.price * quantity) as unknown as string, {
                         precision: 2,
                         separator: ',',

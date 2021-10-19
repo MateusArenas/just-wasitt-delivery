@@ -244,6 +244,29 @@ function Product({
               >
                 <ProductModel data={data} store={store} onPress={Keyboard.dismiss} />
 
+                
+                <View style={{ paddingHorizontal: 10, backgroundColor: colors.card, flexDirection: 'row' }}>
+                  {[].concat(
+                    data?.categories?.map(item => ({ 
+                      _id: item?._id, name: `#${item?.name}`,
+                      onPress: () => navigation.navigate('Category', { store, id: item?._id })
+                    }))).concat( 
+                    data?.promotions?.map(item => ({ 
+                      _id: item?._id, name: `%${item?.name}`,
+                      onPress: () => navigation.navigate('Promotion', { store, id: item?._id })
+                    }))
+                  )?.map(item => (
+                    <TouchableOpacity key={item?._id} onPress={item?.onPress}>
+                      <Text style={{
+                        fontSize: 14, fontWeight: '500',
+                        color: colors.primary, 
+                        paddingVertical: 10, paddingRight: 10
+                      }}>
+                        {item?.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
                 {data?.store?.delivery && 
                   <View style={{  backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -273,110 +296,7 @@ function Product({
                     }</Text>
                   </View>
                 }
-                <CardLink border={data?.store?.delivery ? 'top' : false} style={{ backgroundColor: colors.card }}
-                  title={'Categorias'}
-                  color={colors.text}
-                  onPressed={Keyboard.dismiss}
-                  left={
-                    <MaterialIcons style={{ padding: 10 }} 
-                      name={"tag"}
-                      size={24}
-                      color={colors.text}
-                    />
-                  }
-                  right={
-                    <MaterialIcons style={{ padding: 10 }} 
-                      name={"expand-more"}
-                      size={24}
-                      color={colors.border}
-                    />
-                  }
-                  onPress={() => BottomHalfModal.show(modalize => 
-                    <FlatList 
-                      ListHeaderComponentStyle={{ 
-                        width: '100%', padding: 10, 
-                        alignItems: 'center', justifyContent: 'center',
-                        borderBottomWidth: 1, borderColor: colors.border,
-                      }}
-                      ListHeaderComponent={
-                        <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Categorias'}</Text>
-                      }
-                      data={data?.categories?.map(category => 
-                        ({ key: category?._id, title: category?.name, onPress: () => navigation.navigate('Category', { store, id: category?._id })  })
-                      )}
-                      keyExtractor={(item, index) => `${item?.key}-${index}`}
-                      renderItem={({ item, index }) => 
-                      <CardLink border={(data?.categories?.length-1) !== index}
-                          left={
-                            <MaterialIcons style={{ padding: 20 }}
-                              name={'tag'}
-                              size={24}
-                              color={colors.text}
-                            />
-                          }
-                          titleContainerStyle={{ paddingVertical: 10 }}
-                          title={item?.title}
-                          color={colors.text}
-                          onPress={item?.onPress}
-                          onPressed={modalize?.current?.close}
-                        />
-                      }
-                    />
-                  )} 
-                />
 
-                {data?.promotions?.length > 0 && 
-                <CardLink border={'top'} style={{ backgroundColor: colors.card }}
-                  title={'Promoções'}
-                  color={colors.text}
-                  onPressed={Keyboard.dismiss}
-                  left={
-                    <MaterialIcons style={{ padding: 10 }} 
-                      name={"anchor"}
-                      size={24}
-                      color={colors.text}
-                    />
-                  }
-                  right={
-                    <MaterialIcons style={{ padding: 10 }} 
-                      name={"expand-more"}
-                      size={24}
-                      color={colors.border}
-                    />
-                  }
-                  onPress={() => BottomHalfModal.show(modalize => 
-                    <FlatList 
-                      ListHeaderComponentStyle={{ 
-                        width: '100%', padding: 10, 
-                        alignItems: 'center', justifyContent: 'center',
-                        borderBottomWidth: 1, borderColor: colors.border,
-                      }}
-                      ListHeaderComponent={
-                        <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Promoções'}</Text>
-                      }
-                      data={data?.promotions?.map(promotion => 
-                        ({ key: promotion?._id, title: promotion?.name, onPress: () => navigation.navigate('Promotion', { store, id: promotion?._id })  })
-                      )}
-                      keyExtractor={(item, index) => `${item?.key}-${index}`}
-                      renderItem={({ item, index }) => 
-                        <CardLink border={(data?.promotions?.length-1) !== index}
-                          left={
-                            <MaterialIcons style={{ padding: 20 }}
-                              name={'anchor'}
-                              size={24}
-                              color={colors.text}
-                            />
-                          }
-                          titleContainerStyle={{ paddingVertical: 10 }}
-                          title={item?.title}
-                          color={colors.text}
-                          onPress={item?.onPress}
-                          onPressed={modalize?.current?.close}
-                        />
-                      }
-                    />
-                  )} 
-                />}
 
           <View style={{ backgroundColor: colors.card }}>
             <Text style={{ color: colors.text, fontWeight: '500', fontSize: 16, padding: 10 }}>Observações</Text>

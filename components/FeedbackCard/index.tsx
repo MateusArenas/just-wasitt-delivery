@@ -10,13 +10,13 @@ interface FeedbackCardProps {
 const FeedbackCard: React.FC<FeedbackCardProps> = ({ name, message }) => {
   const { colors } = useTheme()
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 10 }}>
+    <View style={{ flexDirection: 'row',  padding: 10 }}>
       <MaterialIcons 
         name="account-circle"
         size={24*2}
         color={colors.text}
       />
-      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', padding: 10 }}>
+      <View style={{ flex: 1, padding: 10 }}>
         <Text style={{ marginRight: 5, 
           fontWeight: '500', fontSize: 16,
           color: colors.text, 
@@ -24,7 +24,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({ name, message }) => {
         <Text style={{
           fontWeight: '500', fontSize: 16,
           color: colors.text, 
-          flex: 1, opacity: .5,
+          opacity: .5,
         }}>{message}</Text>
       </View>
     </View>

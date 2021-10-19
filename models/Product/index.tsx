@@ -84,7 +84,7 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
                 {data?.promotions?.length > 0 && <Text style={[styles.subTitle, { color: colors.primary, marginRight: 10 }]} numberOfLines={1}>{
                   MaskService.toMask('money', 
                   (
-                    data?.price - (data?.price * ((Math.max(...data?.promotions?.map(item => item?.percent)) | 0) / 100))
+                    data?.price - (data?.price * (Math.max(...data?.promotions?.map(item => item?.percent), 0) / 100))
                   ) as unknown as string, 
                   {
                     precision: 2,
@@ -94,18 +94,18 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
                     suffixUnit: ''
                   })  
                 }</Text>}
-                <Text style={[
+                {!!data?.price && <Text style={[
                   styles.subTitle, { color: colors.text}, 
                   data?.promotions?.length > 0 ? { textDecorationLine: 'line-through' } : {}
                 ]} numberOfLines={1}>{
-                  MaskService.toMask('money', (data?.price | 0) as unknown as string, {
+                  MaskService.toMask('money', data?.price as unknown as string, {
                     precision: 2,
                     separator: ',',
                     delimiter: '.',
                     unit: 'R$ ',
                     suffixUnit: ''
                   })  
-                }</Text>
+                }</Text>}
               </View>
           </View>
 

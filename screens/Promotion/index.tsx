@@ -196,8 +196,8 @@ export default function Promotion ({
               }
               data={
                 promotion?.self ? [
-                  { key: 0, icon: 'add-circle-outline', color: colors.primary, title: 'Criar', onPress: () => navigation.navigate('MakeProduct', { store })},
-                  { key: 1, icon: 'edit', color: colors.text, title: 'Editar', onPress: () => navigation.navigate('MakeCategory', { store, id })},
+                  { key: 0, icon: 'add-circle-outline', color: colors.primary, title: 'Criar', onPress: () => navigation.navigate('MakePromotion', { store })},
+                  { key: 1, icon: 'edit', color: colors.text, title: 'Editar', onPress: () => navigation.navigate('MakePromotion', { store, id })},
                   { key: 2, icon: 'delete', color: 'red', title: 'Remover', onPress: async function onRemove () {
                     try {
                       await PromotionService.remove({ store, id })

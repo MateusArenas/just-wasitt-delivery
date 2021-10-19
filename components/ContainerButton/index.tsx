@@ -1,6 +1,6 @@
 import { useTheme } from '@react-navigation/native';
 import React from 'react';
-import { Easing, View, Text, StyleProp, ViewStyle, TouchableOpacity } from 'react-native';
+import { Easing, View, Text, StyleProp, ViewStyle, TouchableOpacity, ColorValue } from 'react-native';
 import { DotIndicator } from 'react-native-indicators';
 
 interface ContainerButtonProps {
@@ -10,6 +10,7 @@ interface ContainerButtonProps {
   onSubimit?: () => any
   onSubimiting?: () => any
   transparent?: boolean
+  color?: ColorValue
   border?: boolean
   style?: StyleProp<ViewStyle>
 }
@@ -21,6 +22,7 @@ const ContainerButton: React.FC<ContainerButtonProps> = ({
   onSubimit=()=>{},
   onSubimiting=()=>{},
   transparent,
+  color,
   border
 }) => {
   const { colors } = useTheme()
@@ -42,7 +44,7 @@ const ContainerButton: React.FC<ContainerButtonProps> = ({
         {!loading ? 
           <Text numberOfLines={1} style={{ 
             flex: 1, alignSelf: 'flex-end', textAlign: 'center',
-            color: transparent ? colors.text : 'white',
+            color: transparent ? color ? color : colors.text : 'white',
             fontWeight: '500', textTransform: 'uppercase',
             fontSize: 14, letterSpacing: 1, 
           }}>{title}</Text>

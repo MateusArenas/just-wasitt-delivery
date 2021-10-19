@@ -74,39 +74,63 @@ export default function Saved({
               setSelecteds(data?.map(item => item?._id))
               : setEditMode(true)
             }
-            onPressed={() => (editMode && selecteds.length > 0) && 
-              BottomHalfModal.show(modalize =>
+            onPressed={() => (editMode && selecteds.length > 0) &&  BottomHalfModal.show(modalize => 
               <FlatList 
-                data={[
-                  { title: 'Excluir', icon: 'close', onPress: () => onClear(selecteds) },
-                  { title: 'Arquivar', icon: 'archive', onPress: () => {} },
-                ]}
-                keyExtractor={(item, index) => `${item?.title}-${index}`}
-                renderItem={({ item, index }) => 
-                  <CardLink
-                    title={item?.title}
-                    color={colors.text}
-                    border={1 !== index}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                    left={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={item?.icon as any}
-                        size={24}
-                        color={colors.primary}
-                      />
-                    }
+              data={[]}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?.key}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === 0 ? 10 : 0, borderBottomRightRadius: index === 0 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === 0 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== 0}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Remover'}
                     right={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={"chevron-right"}
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'delete'}
                         size={24}
-                        color={colors.border}
+                        color={'red'}
                       />
                     }
+                    color={'red'}
+                    onPress={() => onClear(selecteds)}
+                    onPressed={modalize?.current?.close}
                   />
-                }
-              />
-            )}
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )}  
           />}
         </View>
       ),

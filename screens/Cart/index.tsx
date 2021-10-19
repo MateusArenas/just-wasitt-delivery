@@ -23,6 +23,7 @@ import useLoadScreen from '../../hooks/useLoadScreen';
 import BottomHalfModalContext from '../../contexts/BottomHalfModal';
 import CardLink from '../../components/CardLink';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { MaskService } from 'react-native-masked-text';
 // import { Container } from './styles';
 
 export default function Cart({ 
@@ -92,33 +93,90 @@ export default function Cart({
               setSelecteds(response?.data?.map(item => item?.store?.name))
               : setEditMode(true)
             }
-            onPressed={() => (editMode && selecteds.length > 0) && 
-              BottomHalfModal.show(modalize =>
+            onPressed={() => (editMode && selecteds.length > 0) &&  BottomHalfModal.show(modalize => 
               <FlatList 
-                data={[
-                  { title: 'Excluir', icon: 'close', onPress: () => onClear(selecteds) },
-                  { title: 'Arquivar', icon: 'arrow-circle-down', onPress: () => {} },
-                ]}
-                keyExtractor={(item, index) => `${item?.title}-${index}`}
-                renderItem={({ item, index }) => 
-                  <CardLink border={index !== 1}
-                    title={item?.title}
-                    // subTitle={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
-                    color={colors.primary}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                    rightLabel={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
-                    left={
-                      <MaterialIcons style={{ padding: 10 }}
-                        name={item?.icon as any}
+              data={[]}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?.key}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === 0 ? 10 : 0, borderBottomRightRadius: index === 0 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === 0 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== 0}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Remover'}
+                    right={
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'delete'}
                         size={24}
-                        color={colors.border}
+                        color={'red'}
                       />
                     }
+                    color={'red'}
+                    onPress={() => onClear(selecteds)}
+                    onPressed={modalize?.current?.close}
                   />
-                }
-              />
-            )}
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )}  
+            // onPressed={() => (editMode && selecteds.length > 0) && 
+            //   BottomHalfModal.show(modalize =>
+            //   <FlatList 
+            //     data={[
+            //       { title: 'Excluir', icon: 'close', onPress: () => onClear(selecteds) },
+            //       { title: 'Arquivar', icon: 'arrow-circle-down', onPress: () => {} },
+            //     ]}
+            //     keyExtractor={(item, index) => `${item?.title}-${index}`}
+            //     renderItem={({ item, index }) => 
+            //       <CardLink border={index !== 1}
+            //         title={item?.title}
+            //         // subTitle={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
+            //         color={colors.primary}
+            //         onPress={item?.onPress}
+            //         onPressed={modalize?.current?.close}
+            //         rightLabel={`${selecteds?.length} ${selecteds?.length === 1 ? 'item' : 'items'}`}
+            //         left={
+            //           <MaterialIcons style={{ padding: 10 }}
+            //             name={item?.icon as any}
+            //             size={24}
+            //             color={colors.border}
+            //           />
+            //         }
+            //       />
+            //     }
+            //   />
+            // )}
           />}
         </View>
       ),
@@ -210,7 +268,14 @@ export default function Cart({
                 uri={item?.store?.uri}
                 name={item?.store?.name}
                 items={item?.bundles?.map(i => ({ uri: i?.product?.uri, quantity: i?.quantity }))}
-                price={item?.bundles?.map(i => i?.product?.price*i?.quantity)?.reduce((accum, curr) => accum + curr, 0)}
+                price={item?.bundles?.map(item => 
+                  ( item?.product?.price - 
+                    (
+                      (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
+                      * item?.product?.price
+                    )
+                  ) * item?.quantity
+                )?.reduce((accum, curr) => accum + curr, 0)}
               /> 
           )}
         />
@@ -231,12 +296,14 @@ interface CartProductProps {
   name: string
   about?: string
   price: number
+  promotions: Array<number>
 }
 const CartBag: React.FC<CartProductProps> = ({
   uri,
   name,
   about,
   price,
+  promotions,
   onPress,
   onLongPress,
   editMode,
@@ -281,7 +348,16 @@ const CartBag: React.FC<CartProductProps> = ({
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
                     <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{name}</Text>
                     {about && <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .5 }}>{about}</Text>}
-                    <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{writePrice(price)}</Text>
+                    <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{
+                      MaskService.toMask('money', price as unknown as string, 
+                      {
+                        precision: 2,
+                        separator: ',',
+                        delimiter: '.',
+                        unit: 'R$ ',
+                        suffixUnit: ''
+                      })
+                    }</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                       {items.slice(0, numberOfItems).map(item => (
                         <View style={{ position: 'relative' }}>

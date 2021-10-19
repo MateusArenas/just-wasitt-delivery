@@ -22,29 +22,85 @@ export const HeaderStore = ({
   const { colors } = useTheme()
   return ({
     headerRight: ({ tintColor }) => (
-      <SafeAreaView style={{ display: 'flex', flexDirection: 'row', }}>
+      <View style={{ display: 'flex', flexDirection: 'row', }}>
         <IconButton 
           name="more-horiz" 
           size={24} 
           color={colors.text} 
           onPress={() => BottomHalfModal.show(modalize => 
-            <FlatList 
-              data={[
-                { key: 0, title: `Compartilhar a loja ${route.params.store}`, onPress: () => Share.share({ title: route.params.store, url: '/', message: 'oi' }) },
-              ]}
-              keyExtractor={item => `${item?.key}`}
-              renderItem={({ item }) => 
-                <CardLink 
-                  title={item?.title}
-                  color={colors.text}
-                  onPress={item?.onPress}
-                  onPressed={modalize?.current?.close}
-                />
-              }
-            />
+            <FlatList
+            ListHeaderComponentStyle={{ padding: 5 }}
+            ListHeaderComponent={
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                {[
+                  { key: 0, icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => navigation.navigate('MakeProduct', { store, id })},
+                  { key: 1, icon: 'link', color: colors.text, title: 'Link', onPress: () => navigation.navigate('MakeProduct', { store, id })},
+                  { key: 2, icon: 'sim-card-alert', color: 'red', title: 'Denunciar', onPress: () => {} },
+                ].map(item => (
+                  <View style={{ 
+                    padding: 10, paddingTop: 0,
+                    flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                    marginHorizontal: 5, alignItems: 'center', 
+                  }}>
+                    <IconButton style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                      onPress={item?.onPress}
+                      onPressed={modalize?.current?.close}
+                    />
+                    <Text style={{ color: item?.color, fontSize: 12, 
+                      position: 'absolute', bottom: 10
+                    }}>{item?.title}</Text>
+                  </View>
+                ))}
+              </View>
+              // <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Produto'}</Text>
+            } 
+            data={
+              [
+                { key: 0, icon: 'info-outline', color: colors.text, title: 'Sobre', onPress: () => navigation.navigate('StoreInfo', { store: route?.params?.store })},
+              ]
+            }
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyExtractor={(item, index) => `${item?.key}-${index}`}
+            renderItem={({ item, index }) => 
+              <CardLink style={{
+                  backgroundColor: colors.card,
+                  borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                  borderBottomLeftRadius: index === 0 ? 10 : 0, borderBottomRightRadius: index === 0 ? 10 : 0,
+                  marginTop: index === 0 ? 10 : 0, marginBottom: index === 0 ? 10 : 0,
+                  marginHorizontal: 10,
+                }}
+                border={index !== 0}
+                titleContainerStyle={{ padding: 10 }}
+                title={item?.title}
+                right={
+                  <MaterialIcons style={{ padding: 20 }}
+                    name={item?.icon as any}
+                    size={24}
+                    color={item?.color}
+                  />
+                }
+                color={item?.color}
+                onPress={item?.onPress}
+                onPressed={modalize?.current?.close}
+              />
+            }
+            ListFooterComponent={
+              <CardLink border={false}
+                style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                title={'Cancelar'}
+                right={null}
+                color={colors.text}
+                onPress={modalize?.current?.close}
+              />
+            }
+          />
           )} 
         />
-        </SafeAreaView>
+        </View>
     ),
   })
 }

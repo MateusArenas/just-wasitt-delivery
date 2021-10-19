@@ -116,13 +116,12 @@ export default function Checkout({
         (
           item.product?.price - 
           (
-            (Math.max(...item?.product?.promotions?.map(item => item?.percent)) / 100 )
+            (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
             * item.product?.price
-            )
-            ) 
-            * item.quantity)?.reduce((acc, cur) => acc + cur, 0)
-            )
-          } ,[setTotalPrice, products])
+          )
+        ) * item.quantity)?.reduce((acc, cur) => acc + cur, 0)
+    )
+  } ,[setTotalPrice, products])
           
   const onSubimit = async () => {
     try {

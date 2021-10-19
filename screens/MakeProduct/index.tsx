@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect } from 'react';
-import { TextInput, View, Text, TouchableWithoutFeedback, useWindowDimensions, TextInputProps, Keyboard } from 'react-native';
+import { Clipboard, Image, TextInput, View, Text, TouchableWithoutFeedback, useWindowDimensions, TextInputProps, Keyboard, TouchableOpacity } from 'react-native';
 import { CommonActions, NavigationProp, RouteProp, StackActions, useFocusEffect, useNavigation, useRoute, useTheme } from '@react-navigation/native';
 import { StackHeaderTitleProps, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types';
@@ -395,17 +395,36 @@ const PriceRoute: React.FC<{
 const ImageRoute: React.FC<{
   value: string
   onChangeValue: (uri: string) => any
-}> = () => {
+}> = ({ value, onChangeValue }) => {
+  const { width } = useWindowDimensions()
   const { colors } = useTheme()
   return (
     <View style={{ flex: 1, height: 250, alignItems: 'center', justifyContent: 'center' }}>
-      <IconButton 
-        style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
-        name="photo-camera"
-        size={24*4}
-        color={colors.border}
-        onPress={() => {}}
-      />
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        {!value ? <MaterialIcons 
+          style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
+          name="photo-camera"
+          size={24*4}
+          color={colors.border}
+        /> : 
+        <View style={{ width, padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 4, overflow: 'hidden' }}>
+          <Image source={{ uri: value, width: '100%', height: 250 }} style={{ borderRadius: 4 }}/>
+        </View>
+        }
+      </TouchableOpacity>
+      <TouchableOpacity onPress={async () => {
+        const uri = await Clipboard.getString()
+        onChangeValue(uri)
+      }}>
+        <Text style={{ 
+          color: colors.primary, 
+          fontWeight: '500', 
+          fontSize: 16, padding: 10
+        }}>{'Alterar Imagem'}</Text>
+      </TouchableOpacity>
     </View>
   )
 }

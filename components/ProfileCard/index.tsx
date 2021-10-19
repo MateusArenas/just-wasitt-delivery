@@ -34,7 +34,7 @@ const ProfileCard: React.FC<{
             {uri ? 
               <Image 
                 style={{ width: 80, height: 80, borderRadius: 120, borderWidth: 1, borderColor: colors.border }}
-                source={{ uri: 'https://static-images.ifood.com.br/image/upload/t_thumbnail/logosgde/322ccdf6-abeb-4249-9d7b-a0ddb19dbc3b/202103031143_Lf0g_i.jpg'}} 
+                source={{ uri }} 
               />
             : <MaterialIcons name="account-circle" size={80} color={colors.text} />
             }
