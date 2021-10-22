@@ -80,7 +80,7 @@ function TabExploreNavigator({
         name="Products" 
         component={Products}
         options={{ 
-          title: 'Todos Produtos',
+          title: 'Publicações',
         }}
       />
       

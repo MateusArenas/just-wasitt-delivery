@@ -25,7 +25,7 @@ import SearchBar from "../../components/SearchBar";
 import { useDebounce } from "../../hooks/useDebounce";
 import api from "../../services/api";
 import { CategoryData } from "../../services/category";
-import * as CategoryService from '../../services/promotion';
+import * as CategoryService from '../../services/category';
 import { PullToRefreshView } from "../../components/PullToRefreshView";
 import { MaterialIcons } from "@expo/vector-icons";
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect } from 'react';
-import { Clipboard, Image, TextInput, View, Text, TouchableWithoutFeedback, useWindowDimensions, TextInputProps, Keyboard, TouchableOpacity } from 'react-native';
+import { Clipboard, Image, TextInput, View, Text, TouchableWithoutFeedback, useWindowDimensions, TextInputProps, Keyboard, TouchableOpacity, ImageBackground, FlatList } from 'react-native';
 import { CommonActions, NavigationProp, RouteProp, StackActions, useFocusEffect, useNavigation, useRoute, useTheme } from '@react-navigation/native';
 import { StackHeaderTitleProps, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types';
@@ -24,6 +24,10 @@ import KeyboardSpacer from '../../components/KeyboardSpacer';
 import TextButton from '../../components/TextButton';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import { MaskService } from 'react-native-masked-text';
+import InputCheck from '../../components/InputCheck';
+import CustomBottomTabBar from '../../components/CustomBottomTabBar';
+import { BlurView } from 'expo-blur';
+import ContainerButton from '../../components/ContainerButton';
 
 export default function MakeProduct ({
   navigation,
@@ -33,7 +37,7 @@ export default function MakeProduct ({
   const bottom = useContext(BottomTabBarHeightContext) || 0
   
   const { signed } = React.useContext(AuthContext)
-  const { colors } = useTheme()
+  const { colors, dark } = useTheme()
   const layout = useWindowDimensions()
   const { store, id } = route.params
   const rootNavigation = useRootNavigation()
@@ -57,6 +61,7 @@ export default function MakeProduct ({
     if (id) {
       setState({ 
         ...data, 
+        products: data?.products?.map(item => typeof item === 'string' ? item : item?._id),
         categories: data?.categories?.map(item => typeof item === 'string' ? item : item?._id),
         promotions: data?.promotions?.map(item => typeof item === 'string' ? item : item?._id) 
       })
@@ -126,12 +131,14 @@ export default function MakeProduct ({
 
   const [index, setIndex] = React.useState(0)
   const [routes] = React.useState<Array<TabViewRouteProps>>([
-    { key: 'name', title: 'Nome', icon: 'local-offer', focused: index === 0 }, //loyalty // receipt = pedido
+    { key: 'name', title: 'Nome', icon: 'create', focused: index === 0 }, //loyalty // receipt = pedido
     { key: 'image', title: 'Foto', icon: 'photo-camera', focused: index === 1 }, //storefrot // style = produtos
     { key: 'price', title: 'Preço', icon: 'attach-money', focused: index === 2 },
-    { key: 'categories', title: 'Tags', icon: 'tag', focused: index === 3 },
-    { key: 'promotions', title: 'Offs', icon: 'anchor', focused: index === 4 },
-    { key: 'about', title: 'Sobre', icon: 'short-text', focused: index === 5 },
+    { key: 'offset', title: 'Teto', icon: 'arrow-circle-up', focused: index === 3 },
+    { key: 'products', title: 'Produtos', icon: 'local-offer', focused: index === 4 },
+    { key: 'categories', title: 'Categorias', icon: 'tag', focused: index === 5 },
+    { key: 'promotions', title: 'Promoções', icon: 'anchor', focused: index === 6 },
+    { key: 'about', title: 'Sobre', icon: 'short-text', focused: index === 7 },
   ])
 
   const isFocused = React.useCallback((key: string) => {
@@ -150,6 +157,10 @@ export default function MakeProduct ({
         return <ImageRoute value={state?.uri} onChangeValue={uri => setState(state => ({ ...state, uri }))} />
       case 'price':
         return <PriceRoute focused={focused} value={state?.price} onChangeValue={price => setState(state => ({ ...state, price }))} />
+      case 'offset':
+        return <OffsetRoute focused={focused} value={state?.offset} onChangeValue={offset => setState(state => ({ ...state, offset }))} />
+      case 'products':
+        return <ProductsRoute focused={focused} value={state?.products} onChangeValue={products => setState(state => ({ ...state, products }))}/>;
       case 'categories': 
         return <CategoryRoute value={state?.categories} onChangeValue={_id => {
           const s = state?.categories?.find(_s => _s === _id)
@@ -169,18 +180,74 @@ export default function MakeProduct ({
     }
   }, [state, setState, isFocused])
 
+
   if (loading) return <Loading />
   if (!response?.network) return <Refresh onPress={() => navigation.replace('MakeProduct', route?.params)}/>
   if (!response?.ok) return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
   
   return (
-    <TabView swipeEnabled style={{ paddingTop: top }}
-      navigationState={{ index, routes }}
-      renderScene={renderScene}
-      onIndexChange={setIndex}
-      initialLayout={{ width: layout.width }}
-      renderTabBar={props => <CustomTopTabBar {...props}/>}
-    />
+    <View style={{ flex: 1, paddingTop: top }}>
+      <Text style={{ 
+        fontSize: 36, color: colors.text, fontWeight: '500',
+        paddingHorizontal: 20, paddingVertical: 10, 
+        borderBottomWidth: 1, borderColor: colors.border,
+        backgroundColor: colors.card
+      }}>
+        {routes[index]?.title}
+      </Text>
+      <TabView swipeEnabled 
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => <CustomTopTabBar {...props} 
+          navigationState={{
+            ...props?.navigationState,
+            routes: props?.navigationState?.routes?.map(item => ({ ...item, title: undefined }))
+          }} 
+        />}
+      />
+
+      <View style={{  width: '100%', padding: '5%' }} 
+        // onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
+      >
+        <BlurView style={{ 
+          width: '100%', borderRadius: 4, overflow: 'hidden',
+          flexDirection: 'row', 
+          alignItems: 'center', justifyContent: 'space-between',
+         }} 
+          intensity={100} tint={dark ? 'dark' : 'light'}
+        >
+          <View style={[{ flex: 1 }, (state?.single && !state?.spinOff) ? { backgroundColor: colors.border } : {}]}>
+            <ContainerButton transparent
+              title={"Unico"}
+              color={(state?.single && !state?.spinOff) ? colors.primary : colors.text}
+              onSubimit={() => setState(state => ({ ...state, single: true, spinOff: false }))}
+            />
+          </View>
+          <View style={[{ flex: 1 }, (!state?.single && !state?.spinOff) ? { backgroundColor: colors.border } : {}]}>
+            <ContainerButton transparent
+              title={"Grupo"}
+              color={(!state?.single && !state?.spinOff) ? colors.primary : colors.text}
+              onSubimit={() => setState(state => ({ ...state, single: false, spinOff: false }))}
+            />
+          </View>
+          <View style={[{ flex: 1 }, state?.spinOff ? { backgroundColor: colors.border } : {}]}>
+            <ContainerButton transparent
+              title={"Extra"}
+              color={state?.spinOff ? colors.primary : colors.text}
+              onSubimit={() => setState(state => ({ ...state, spinOff: true, single: true }))}
+            />
+          </View>
+          {/* <InputCheck
+            label="Ser somente adicional"
+            check={state?.spinOff}
+            onPress={() => setState(state => ({ ...state, spinOff: !state?.spinOff }))}
+          /> */}
+        </BlurView>
+      </View>
+      <KeyboardSpacer topSpacing={-bottom} />
+    </View>
   )
 }
 
@@ -189,7 +256,7 @@ const NameRoute: React.FC<{
   value: string
   onChangeValue: (value: string) => any
 }> = ({
-  value, onChangeValue, focused
+  value='', onChangeValue, focused
 }) => {
   const { colors } = useTheme()
   const topSpacing = React.useContext(BottomTabBarHeightContext) || 0
@@ -224,12 +291,12 @@ const NameRoute: React.FC<{
                   onChangeText={text => onChangeValue(text)}
                 />
               </View>
-              {value?.length === 0 && <MaterialIcons 
+              {/* {value?.length === 0 && <MaterialIcons 
                 style={{ opacity: .5 }}
                 name="local-offer" 
                 size={24*1.5} 
                 color={colors.text}
-              />}
+              />} */}
             </View>
           </View>
         </View>
@@ -242,7 +309,6 @@ const NameRoute: React.FC<{
             color: colors.text, opacity: .5,
             padding: 10, 
           }}>{value?.length + ' / ' + 20}</Text>
-          <KeyboardSpacer topSpacing={-topSpacing} />
       </View>
   )
 }
@@ -296,7 +362,7 @@ const AboutRoute: React.FC<{
   value: string
   onChangeValue: (value: string) => any
 }> = ({
-  value, onChangeValue, focused
+  value='', onChangeValue, focused
 }) => {
   const ref = React.useRef<TextInput>(null)
 
@@ -330,7 +396,6 @@ const AboutRoute: React.FC<{
           position: 'absolute', bottom: 0, right: 0, padding: 10, 
         }}>{value?.length + ' / ' + 60}</Text>
       </View>
-      <KeyboardSpacer topSpacing={-topSpacing} />
     </View>
   )
 }
@@ -387,7 +452,6 @@ const PriceRoute: React.FC<{
           />
         </View>
       </View>
-      <KeyboardSpacer topSpacing={-topSpacing} />
     </View>
   )
 }
@@ -426,5 +490,232 @@ const ImageRoute: React.FC<{
         }}>{'Alterar Imagem'}</Text>
       </TouchableOpacity>
     </View>
+  )
+}
+
+
+const OffsetRoute: React.FC<{
+  value: number
+  onChangeValue: (value: number) => any
+}> = ({
+  value=0, onChangeValue
+}) => {
+  const { colors } = useTheme()
+  const topSpacing = React.useContext(BottomTabBarHeightContext) || 0
+
+  return (
+    <View style={{ flex: 1 }}>
+        <TouchableWithoutFeedback style={{ flex: 1}} onPress={Keyboard.dismiss} >
+          <View style={{ flex: 1 }}/>
+        </TouchableWithoutFeedback>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10 }} >
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <View>
+                <TextInputCentered type={'only-numbers'} autoFocus
+                  includeRawValueInChangeText
+                  checkText={(previus, next) => {
+                    const rawValue = MaskService.toRawValue('only-numbers', next)
+
+                    const enabled = Number(rawValue) <= 100
+
+                    if (!enabled) onChangeValue(100)
+
+                    return enabled
+                  }}
+                  placeholder={'Teto'}
+                  placeholderTextColor={colors.text}
+                  style={{ opacity: value !== 0 ? .8 : .5,
+                    padding: 10,
+                    paddingLeft: 0,
+                    color: colors.text,
+                    fontSize: 16*2, fontWeight: '500', textTransform: 'capitalize'
+                  }}
+                  maxLength={3}
+                  value={value === 0 ? '' : `${value}`}
+                  onChangeText={(text, raw) => onChangeValue(Number(raw))}
+                />
+              </View>
+              {value > 0 && <Text style={{ opacity: value === 0 ? .5 : .8,
+                fontSize: 16*2, color: colors.text, marginLeft: -6,
+                fontWeight: '500', textTransform: 'capitalize'
+              }}>{'%'}</Text>}
+            </View>
+          </View>
+        </View>
+        <TouchableWithoutFeedback style={{ flex: 1}} onPress={Keyboard.dismiss} >
+          <View style={{ flex: 1 }}/>
+        </TouchableWithoutFeedback>
+        <Text style={{
+            alignSelf: 'flex-end',
+            fontWeight: '500', fontSize: 16,
+            color: colors.text, opacity: .5,
+            padding: 10, 
+          }}>{(value ? value : 0) + ' / ' + 100}</Text>
+      </View>
+  )
+}
+
+interface ProductsRouteProps {
+  value: Array<string>
+  onChangeValue: (value: Array<string>) => any
+}
+const ProductsRoute: React.FC<ProductsRouteProps> = ({ value=[], onChangeValue }) => {
+  const layout = useWindowDimensions()
+  const route = useRoute<RouteProp<RootStackParamList, 'MakeCategory'>>()
+  const navigation = useNavigation<NavigationProp<RootStackParamList, 'MakeCategory'>>()
+  const { store, id } = route.params
+  const { 
+    response, 
+    loading, 
+    error, 
+    onService, 
+    onRefresh 
+  } = useService<ProductService.ProductData>(ProductService, 'index', { store })
+  const data = response?.data
+
+  const [index, setIndex] = React.useState(0)
+  const [routes] = React.useState([
+    { key: 'add', title: 'Adicionar' },
+    { key: 'selected', title: 'Selecionados' },
+  ])
+
+  const renderScene = useCallback(({ route }) => {
+    switch (route.key) {
+      case 'add':
+        return <SecondRoute data={data} value={value} onChangeValue={onChangeValue}/>;
+      case 'selected':
+        return <FirstRoute data={data?.filter(item => !!value?.find(_id => item?._id === _id))} value={value} onChangeValue={onChangeValue}/>;
+      default:
+        return null;
+    }
+  }, [value, data])
+
+  if (loading === 'LOADING') return <Loading />
+  if (error === 'NETWORK') return <Refresh onPress={() => navigation.dispatch(StackActions.replace('MakeCategory', { id, store }))}/>
+  if (error === 'NOT_FOUND') return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
+
+  return (
+    <TabView swipeEnabled={false} tabBarPosition="bottom"
+      navigationState={{ index, routes }}
+      renderScene={renderScene}
+      onIndexChange={setIndex}
+      initialLayout={{ width: layout.width }}
+      renderTabBar={props => <CustomBottomTabBar {...props} />}
+    />
+  )
+}
+
+const FirstRoute: React.FC<{
+  data: Array<ProductService.ProductData>
+  value: Array<string>
+  onChangeValue: (value: Array<string>) => any
+}> = ({
+  data, value=[], onChangeValue
+}) => {
+  const { colors } = useTheme()
+  const { width } = useWindowDimensions()
+
+  return (
+    <FlatList 
+      style={{ flex: 1 }}
+      numColumns={3}
+      data={data}
+      contentContainerStyle={{ flexGrow: 1 }}
+      columnWrapperStyle={{ flex: 1 }}
+      keyExtractor={item => `${item?._id}` }
+      renderItem={({ item } : { item: ProductService.ProductData }) => (
+        <TouchableOpacity onPress={() => {
+          console.log('click')
+          const s = value?.find(_s => _s === item?._id)
+          if (s) onChangeValue(value?.filter(_s => _s !== item?._id))
+          else onChangeValue([...value, item?._id])
+        }}>
+          <ImageBackground 
+            defaultSource={require('../../assets/images/default-product.jpg')}
+            source={{ uri: item?.uri }}
+            style={{ width: width/3, height: 160 }}
+          >
+            <View style={{ 
+              flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end',
+              backgroundColor: 'rgba(0,0,0,.1)', 
+              padding: 5,
+              borderWidth: 1, borderColor: colors.border, borderRadius: 2,
+            }}>
+              <View style={{ width: '100%', alignItems: 'flex-end', flexDirection: 'row', padding: 5 }}>
+                <Text numberOfLines={2} style={{ color: 'white', fontSize: 14, fontWeight: '500' }} >{item?.name}</Text>
+                <View style={{ 
+                  width: 30,
+                  height: 30, 
+                  borderRadius: 60,
+                  borderWidth: 2, borderColor: 'white',
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: value?.find(s => s === item?._id) ? colors.primary : 'transparent'
+                }}>
+                  {value?.find(s => s === item?._id) && <MaterialIcons name="check" size={20} color={'white'} />}
+                </View>
+              </View>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
+      )}
+    />
+  )
+}
+
+const SecondRoute: React.FC<{
+  data: Array<ProductService.ProductData>
+  value: Array<string>
+  onChangeValue: (value: Array<string>) => any
+}> = ({
+  data, value=[], onChangeValue
+}) => {
+  const { colors } = useTheme()
+  const { width } = useWindowDimensions()
+
+  return (
+    <FlatList 
+      style={{ flex: 1 }}
+      numColumns={3}
+      data={data}
+      contentContainerStyle={{ flexGrow: 1 }}
+      columnWrapperStyle={{ flex: 1 }}
+      keyExtractor={item => `${item?._id}` }
+      renderItem={({ item } : { item: ProductService.ProductData }) => (
+        <TouchableOpacity onPress={() => {
+          console.log('click')
+          const s = value?.find(_s => _s === item?._id)
+          if (s) onChangeValue(value?.filter(_s => _s !== item?._id))
+          else onChangeValue([...value, item?._id])
+        }}>
+          <ImageBackground 
+            defaultSource={require('../../assets/images/default-product.jpg')}
+            source={{ uri: item?.uri }}
+            style={{ width: width/3, height: 160 }}
+          >
+            <View style={{ 
+              flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end',
+              backgroundColor: 'rgba(0,0,0,.1)', 
+              padding: 5,
+              borderWidth: 1, borderColor: colors.border, borderRadius: 2,
+            }}>
+              <View style={{ width: '100%', alignItems: 'flex-end', flexDirection: 'row', padding: 5 }}>
+                <Text numberOfLines={2} style={{ color: 'white', fontSize: 14, fontWeight: '500' }} >{item?.name}</Text>
+                <View style={{ 
+                  width: 30,
+                  height: 30, 
+                  borderRadius: 60,
+                  borderWidth: 2, borderColor: 'white',
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: value?.find(s => s === item?._id) ? colors.primary : 'transparent'
+                }}>
+                  {value?.find(s => s === item?._id) && <MaterialIcons name="check" size={20} color={'white'} />}
+                </View>
+              </View>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
+    )}
+  />
   )
 }

@@ -79,8 +79,10 @@ export default function Search ({
     { key: 'all', icon: 'menu' },
     { key: 'stores', icon: 'store' },
     { key: 'products', icon: 'local-offer' },
+    { key: 'works', icon: 'work' },
     { key: 'categories', icon: 'tag' },
     { key: 'promotions', icon: 'anchor' },
+    { key: 'locations', icon: 'location-on' },
   ])
 
   const isFocused = React.useCallback((key: string) => {
@@ -90,15 +92,19 @@ export default function Search ({
   const renderScene = React.useCallback(({ route }) => {
     switch (route.key) {
       case 'all':
-        return <ProductsRoute focused={isFocused('all')} name={name} url={'/all'} type={'all'} />
+        return <ProductsRoute title={'Todos'} focused={isFocused('all')} name={name} url={'/all'} type={'all'} />
       case 'products':
-        return <ProductsRoute focused={isFocused('products')} name={name} url={'/products'} type={'product'} />
+        return <ProductsRoute title={'Produtos'} focused={isFocused('products')} name={name} url={'/products'} type={'product'} />
+      case 'works':
+        return <ProductsRoute title={'Serviços'} focused={isFocused('products')} name={name} url={'/products'} type={'product'} />
       case 'categories':
-        return <ProductsRoute focused={isFocused('categories')} name={name} url={'/categories'} type={'category'} />
+        return <ProductsRoute title={'Categorias'} focused={isFocused('categories')} name={name} url={'/categories'} type={'category'} />
       case 'promotions':
-        return <ProductsRoute focused={isFocused('promotions')} name={name} url={'/promotions'} type={'promotion'} />
+        return <ProductsRoute title={'Promoções'} focused={isFocused('promotions')} name={name} url={'/promotions'} type={'promotion'} />
       case 'stores':
-        return <ProductsRoute focused={isFocused('stores')} name={name} url={'/stores'} type={'store'} />
+        return <ProductsRoute title={'Lojas'} focused={isFocused('stores')} name={name} url={'/stores'} type={'store'} />
+      case 'locations':
+        return <ProductsRoute title={'Locais'} focused={isFocused('products')} name={name} url={'/products'} type={'product'} />
       default:
         return null;
     }
@@ -119,6 +125,7 @@ export default function Search ({
 }
 
 interface ProductsRouteProps {
+  title: string,
   name: string
   url: string
   type: 'product' | 'category' | 'promotion' | 'store' | 'all'
@@ -126,7 +133,7 @@ interface ProductsRouteProps {
 }
 
 const ProductsRoute: React.FC<ProductsRouteProps> = ({
-  name, url, type, focused
+  title, name, url, type, focused
 }) => {
   const navigation = useNavigation<NavigationProp<TabExploreParamList, 'Search'>>()
   const route = useRoute<RouteProp<TabExploreParamList, 'Search'>>()
@@ -198,7 +205,17 @@ const ProductsRoute: React.FC<ProductsRouteProps> = ({
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
       >
-        <FlatList 
+        <FlatList
+          ListHeaderComponentStyle={{ padding: 10 }}
+          ListHeaderComponent={
+            <Text style={{ 
+              fontSize: 36, color: colors.text, fontWeight: '500',
+              padding: 10, 
+              borderBottomWidth: 1, borderColor: colors.border
+            }}>
+              {title}
+            </Text>
+          } 
           contentContainerStyle={{ flexGrow: 1 }}
           ListEmptyComponent={
             loading ? <Loading /> :

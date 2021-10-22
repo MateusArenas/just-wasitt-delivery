@@ -175,7 +175,7 @@ export default function Products ({
       <CollapsibleSubHeaderAnimator translateY={translateY}>
         <View style={{ padding: 20, marginTop: top }}>
         {/* <Text>{products?.length}</Text> */}
-          <SearchBar placeholder={'Buscar por nome de produtos'}
+          <SearchBar autoFocus placeholder={'Buscar por nome de publicações'}
             value={name}
             onChangeText={setName}
           />

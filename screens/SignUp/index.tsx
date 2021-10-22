@@ -11,6 +11,7 @@ import ContainerButton from '../../components/ContainerButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import IconButton from '../../components/IconButton';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import KeyboardSpacer from '../../components/KeyboardSpacer';
 
 export default function SignUp ({
   navigation,
@@ -40,16 +41,15 @@ export default function SignUp ({
   const onChangeConfirmPassword = (confirmPassword: string) => setState(state => ({ ...state, confirmPassword }))
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: colors.card }]}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView style={styles.inner} 
+    <View style={[styles.container, { backgroundColor: colors.card }]} >
+        <ScrollView focusable
           contentContainerStyle={{ paddingTop: top, paddingBottom: bottom }}
           scrollIndicatorInsets={{ top, bottom }}
+          keyboardDismissMode={'none'}
+          keyboardShouldPersistTaps={'handled'}
+          style={styles.inner} 
         >
-          <TextInputLabel autoFocus focusable
+          <TextInputLabel 
             color={colors.text}
             label={"Nome"} 
             placeholder={"Nome"} 
@@ -116,8 +116,8 @@ export default function SignUp ({
             />
           </View>
         </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        <KeyboardSpacer topSpacing={-bottom} />
+    </View>
   )
 };
 

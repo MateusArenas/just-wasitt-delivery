@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
 import { StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useContext, useEffect } from 'react';
-import { View, Text, Button, FlatList } from 'react-native';
+import { Image, View, Text, Button, FlatList } from 'react-native';
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import Loading from '../../components/Loading';
 import NotFound from '../../components/NotFound';
@@ -36,6 +36,23 @@ export default function Account({
   const { colors } = useTheme()
   const { user, users, signed, refresh, signIn, signOut, removeSign } = React.useContext(AuthContext)
 
+  const [loading, setLoading] = React.useState(false)
+  const [resfreshing, setResfreshing] = React.useState(false)
+  const [stores, setStores] = React.useState<Array<StoreDate>>([])
+  async function onLoad (shouldRefresh?: boolean) {
+    shouldRefresh ? setResfreshing(true) : setLoading(true)
+    try {
+      const response = await api.get(`/users/${user?._id}/stores`)
+      setStores(response?.data)
+    } catch (err) {
+
+    } finally {
+      shouldRefresh ? setResfreshing(false) : setLoading(false)
+    }
+  }
+
+  useEffect(() => { onLoad() }, [signed, user, setLoading, setStores])
+
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
   const rootNavigation = useRootNavigation()
@@ -45,12 +62,12 @@ export default function Account({
       headerTitleAlign: 'left',
       headerRight: ({ tintColor }) => 
         <View style={{ flexDirection: 'row', paddingHorizontal: 10 }}>
-          <TextButton 
+          {signed && <TextButton 
             label={'Editar'} 
             fontSize={16} 
             color={colors.primary} 
             onPress={() => rootNavigation.navigate('EditAccount', { id: user?._id })} 
-          />
+          />}
         </View>
       ,
       headerTitle: ({ tintColor, ...props }) => (
@@ -67,7 +84,7 @@ export default function Account({
                     { key: 0, icon: 'add', color: colors.primary, title: 'Nova', onPress: () => rootNavigation.navigate('SignUp') },
                     { key: 1, icon: 'login', color: colors.text, title: 'Entrar', onPress: () => rootNavigation.navigate('SignIn') },
                     { key: 2, icon: 'logout', color: 'red', title: 'Sair', onPress: () => signOut() },
-                  ].map(item => (
+                  ]?.map(item => (
                     <View key={item?.key} style={{ 
                       padding: 10, paddingTop: 0,
                       flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
@@ -92,6 +109,7 @@ export default function Account({
                 key: item?._id,
                 icon: item?._id === user?._id  ? "check-circle" : "circle",
                 color: item?._id === user?._id ? colors.primary : colors.text,
+                uri: item?.uri,
                 title: item?._id ? item?.name ? item?.name : item?.email : 'Visitante',
                 onPress: () => {
                   signIn(item?.email, item?.password)
@@ -110,10 +128,21 @@ export default function Account({
                     borderBottomLeftRadius: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0, borderBottomRightRadius: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0,
                     marginTop: index === 0 ? 10 : 0, marginBottom: index === users?.filter(item => item?._id)?.length-1 ? 10 : 0,
                     marginHorizontal: 10,
+                    borderColor: colors.border, borderBottomWidth: index !== users?.filter(item => item?._id)?.length-1 ? 1 : 0,
                   }}
-                  border={index !== users?.filter(item => item?._id)?.length-1}
+                  border={false}
                   titleContainerStyle={{ padding: 10 }}
                   title={item?.title}
+                  left={
+                    item?.uri ? <Image source={{ uri: item?.uri, width: 24, height: 24 }} 
+                      style={{ margin: 20, marginRight: 10, borderRadius: 40 }}
+                    /> :
+                    <MaterialIcons style={{ padding: 20, paddingRight: 10 }}
+                      name={"account-circle"}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
                   right={
                     <MaterialIcons style={{ padding: 20 }}
                       name={item?.icon as any}
@@ -132,11 +161,18 @@ export default function Account({
                     style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
                     titleContainerStyle={{ padding: 10 }}
                     title={'Visitante'}
+                    left={
+                      <MaterialIcons style={{ padding: 20, paddingRight: 10 }}
+                        name={"account-circle"}
+                        size={24}
+                        color={!signed ? colors.primary : colors.text}
+                      />
+                    }
                     right={
                       <MaterialIcons style={{ padding: 20 }}
-                        name={'account-circle'}
+                        name={!signed  ? "check-circle" : "circle"}
                         size={24}
-                        color={signed ? colors.text : colors.primary}
+                        color={!signed ? colors.primary : colors.text}
                       />
                     }
                     color={signed ? colors.text : colors.primary}
@@ -170,8 +206,14 @@ export default function Account({
   return (
       <PullToRefreshView
         offset={top}
-        refreshing={refresh}
-        onRefresh={() => { if(!!user) signIn(user?.email, user?.password, true) }}
+        refreshing={refresh || resfreshing}
+        onRefresh={() => { 
+          if(signed) {
+            signIn(user?.email, user?.password, true) 
+            onLoad(true)
+          }
+          else { signIn(undefined, undefined, true) }
+        }}
         style={{ flex: 1, backgroundColor: colors.background }}
       >
           <FlatList style={{ flex: 1 }}
@@ -207,20 +249,20 @@ export default function Account({
                       loading={false}
                       onSubimit={() => BottomHalfModal.show(modalize => 
                         <FlatList 
-                          data={user?.stores?.map(item => (
+                          data={stores?.map(item => (
                             { key: item?._id, icon: 'store', color: colors.text, title: item?.name, onPress: () => navigation.navigate('Store', { store: item?.name }) }
                           ))}
                           contentContainerStyle={{ flexGrow: 1 }}
-                          keyExtractor={item => `${item?.key}`}
+                          keyExtractor={(item, index) => `${item?.key}-${index}`}
                           renderItem={({ item, index }) => 
                             <CardLink style={{
                                 backgroundColor: colors.card,
                                 borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
-                                borderBottomLeftRadius: index === (user?.stores?.length-1) ? 10 : 0, borderBottomRightRadius: index === (user?.stores?.length-1) ? 10 : 0,
-                                marginTop: index === 0 ? 10 : 0, marginBottom: index === (user?.stores?.length-1) ? 10 : 0,
+                                borderBottomLeftRadius: index === (stores?.length-1) ? 10 : 0, borderBottomRightRadius: index === (stores?.length-1) ? 10 : 0,
+                                marginTop: index === 0 ? 10 : 0, marginBottom: index === (stores?.length-1) ? 10 : 0,
                                 marginHorizontal: 10,
                               }}
-                              border={index !== (user?.stores?.length-1)}
+                              border={index !== (stores?.length-1)}
                               titleContainerStyle={{ padding: 10 }}
                               title={item?.title}
                               right={
@@ -315,7 +357,7 @@ export default function Account({
                 borderColor: colors.border,
                 marginTop: 40 
               }}>
-                {section?.map((item, index) => <CardLink key={item?.title}
+                {section?.map((item, index) => <CardLink key={`${item?.title}-${index}`}
                   title={item?.title}
                   color={colors.text}
                   border={(section?.length-1) !== index}

@@ -11,6 +11,10 @@ interface errorData { error: string }
 export interface cartData { 
   _id: string
   store: string & StoreDate
+  components: Array<{
+    product: ProductService.ProductData & any
+    quantity: number
+  }>
   product: ProductService.ProductData & any
   comment?: string
   quantity: number
@@ -48,7 +52,15 @@ export async function index ({ store, userId } : { store: string, userId: string
 
     //exclui os produtos q n existem mais e adiciona o obj produto
     response.data = data?.filter(item => response?.data?.find(({ _id }) => _id === item?.product ))?.map(item => 
-      ({...item, store: _store, product: response?.data?.find(_item => _item?._id === item?.product ) || { '_id': item?.product } })
+      ({
+        ...item, 
+        store: _store, 
+        product: response?.data?.find(_item => _item?._id === item?.product ) || { '_id': item?.product },
+        components: item?.components?.map(({ product, quantity }) => ({
+          quantity,
+          product: response?.data?.find(_item => _item?._id === product ) || { '_id': product }
+        }))
+      })
     )
     
     return Promise.resolve(response as any)

@@ -9,6 +9,7 @@ interface CardLinkProps {
   title?: string | number
   titleFontWeight?: TextStyle["fontWeight"]
   subTitle?: string | number
+  subTitleStyle?: StyleProp<TextStyle>
   titleContainerStyle?: StyleProp<ViewStyle>
   rightLabel?: string | number
   centerLabel?: string | number
@@ -29,6 +30,7 @@ const CardLink: React.FC<CardLinkProps> = ({
   title, 
   subTitle, 
   color, 
+  subTitleStyle={ color },
   tintColor, 
   border='bottom', 
   style, 
@@ -54,7 +56,7 @@ const CardLink: React.FC<CardLinkProps> = ({
             <View style={[styles.titleContainer, titleContainerStyle]}>
               <View style={{ padding: 10, paddingLeft: left ? 0 : 10, flexDirection: titleDirection }}>
                 {title && <Text numberOfLines={1} style={[styles.title, { color, fontWeight: titleFontWeight }]}>{capitalizeFisrtLetter(title)}</Text>}
-                {subTitle && <Text numberOfLines={1} style={[styles.subTitle, { color }]}>{capitalizeFisrtLetter(subTitle)}</Text>}
+                {subTitle && <Text numberOfLines={1} style={[styles.subTitle, { color }, subTitleStyle]}>{capitalizeFisrtLetter(subTitle)}</Text>}
               </View>
             </View>
             {center}

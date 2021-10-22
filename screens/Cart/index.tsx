@@ -219,7 +219,7 @@ export default function Cart({
 
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('TabCart')}/>
-  if (!response.ok) return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
+  if (!response.ok) return <NotFound title={`Não há nenhum pedido.`} redirectText={`Vá para tela de inicio!`}/>
 
   return (
     <View style={{ flex: 1 }}>
@@ -231,7 +231,19 @@ export default function Cart({
         style={{ flex: 1, backgroundColor: colors.background }}
       >
         <FlatList style={{ flex: 1 }} ref={ref}
-          contentContainerStyle={{ paddingTop: top, paddingBottom: bottom }}
+          ListEmptyComponent={
+            loading ? <Loading /> :
+            response?.data?.length === 0 && <View style={{ 
+              flex: 1, alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Text style={{ 
+                textAlign: 'center', textAlignVertical: 'center',
+                fontSize: 18, 
+                color: colors.text, opacity: .5,
+              }}>{'Nenhum resultado'}</Text>
+            </View>
+          }
+          contentContainerStyle={{ flexGrow: 1, paddingTop: top, paddingBottom: bottom }}
           scrollIndicatorInsets={{ top, bottom }}
           ListHeaderComponentStyle={{ width: '100%' }}
           ListHeaderComponent={

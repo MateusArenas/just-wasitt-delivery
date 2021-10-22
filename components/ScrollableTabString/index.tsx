@@ -62,6 +62,7 @@ interface ScrollableTabStringProps extends ScrollViewProps {
     unselectedTabStyle?: StyleProp<ViewStyle>
     tabTopComponent?: React.ReactNode
     TabContainerComponet?: React.FC<ViewProps>
+    TabListHeaderComponent?: React.ReactNode
 }
 const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef(({
     headerComponent,
@@ -97,6 +98,7 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
     scrollIndexEffect,
     indexValue,
     scrollToIndexValue,
+    TabListHeaderComponent,
     ...customSectionProps
 }: ScrollableTabStringProps, ref : React.ForwardedRef<ScrollView>) => {
     const tabNamesRef = useRef<FlatList<any>>(null)
@@ -261,6 +263,8 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
                                     {tabTopComponent}
                                     <TabContainerComponet>
                                         <Animated.FlatList 
+                                            stickyHeaderIndices={[0]}
+                                            ListHeaderComponent={TabListHeaderComponent}
                                             data={dataTabs.map((i, index) => ({ ...i, index }))}
                                             nestedScrollEnabled
                                             keyboardShouldPersistTaps="always"

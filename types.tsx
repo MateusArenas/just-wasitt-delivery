@@ -24,6 +24,7 @@ export type RootStackParamList = {
   Followers: { store: string };
   Feedbacks: { store: string };
   Store: { store: string };
+  Offers: { store: string };
   StoreInfo: { store: string };
   Promotion: { store: string, id: string };
   Category: { store: string, id: string };

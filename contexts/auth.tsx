@@ -71,7 +71,7 @@ export const AuthProvider: React.FC = ({ children }) => {
 
   async function signIn (email?: string, password?: string, refresh?: boolean) {
     try {
-      if (!email && !password) return signVisitor()
+      if (!email && !password) return signVisitor(refresh)
       refresh ? setRefresh(true) : setLoading(true)
       const response = await authenticate({ email, password })
       if (!response?.data) setError({ message: 'Erro de conexão!' })

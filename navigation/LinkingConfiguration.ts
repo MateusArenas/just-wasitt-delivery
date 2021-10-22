@@ -145,6 +145,10 @@ export default {
         path: 'store/:store',
         parse: { store: String },
       },
+      Offers: {
+        path: 'store/:store/offers',
+        parse: { store: String },
+      },
       Followers: {
         path: 'store/:store/followers',
         parse: { store: String },

@@ -13,6 +13,10 @@ export interface ProductData {
   user: string & userData
   store: string & StoreDate //_id
   name: string
+  spinOff: boolean
+  single: boolean
+  offset: number
+  products: Array<string & ProductData>
   categories: Array<string & CategoryData>
   promotions: Array<string & PromotionData>
   price: number

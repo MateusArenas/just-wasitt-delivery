@@ -29,7 +29,7 @@ export default {
       background: '#000',
       // card: '#0d0d0d',
       card: '#111111',
-      border: 'rgba(255,255,255,.1)',
+      border: 'rgba(255,255,255,.2)',
     }
   },
 } as themeProps

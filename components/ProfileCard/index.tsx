@@ -4,6 +4,7 @@ import React from 'react';
 import { View, Image, Text, TouchableOpacity, ColorValue, StyleProp, ViewStyle } from 'react-native';
 import { RootStackParamList } from '../../types';
 import IconButton from '../IconButton';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const ProfileCard: React.FC<{
   style?: StyleProp<ViewStyle>
@@ -14,6 +15,7 @@ const ProfileCard: React.FC<{
   uri?: string
   disabled?: boolean
   onPress?: () => any
+  onPressIn?: () => any
 }> = ({
   style,
   uri='https://static-images.ifood.com.br/image/upload/t_high/logosgde/e28dd736-aa7e-438b-be05-123e27b621bd/202103031043_txRd_i.jpg',
@@ -23,22 +25,31 @@ const ProfileCard: React.FC<{
   about,
   disabled,
   onPress,
+  onPressIn,
 }) => {
   const { colors } = useTheme();
   
   return (
-      <TouchableOpacity disabled={disabled} onPress={onPress}>
         <View style={[{ backgroundColor: colors.card, flex: 1, paddingTop: 10, paddingLeft: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, style]}>
           
-          <View style={{ padding: 10, flexShrink: 1, justifyContent: 'flex-start' }}>
-            {uri ? 
-              <Image 
-                style={{ width: 80, height: 80, borderRadius: 120, borderWidth: 1, borderColor: colors.border }}
-                source={{ uri }} 
-              />
-            : <MaterialIcons name="account-circle" size={80} color={colors.text} />
-            }
-          </View>
+          <TouchableOpacity onPress={onPressIn} >
+            <View style={{ margin: 10, borderRadius: 45, overflow: 'hidden' }}>
+              <LinearGradient style={{ 
+                flexShrink: 1, padding: 2
+              }}
+              start={{ x: 0.1, y: 0.2 }}
+              end={{ x: 1, y: 0.8 }}
+              colors={['orange', 'red']}
+              >
+                {uri ? 
+                  <Image style={{ borderRadius: 45, borderWidth: 2, borderColor: colors.card }}
+                    source={{ uri, width: 90, height: 90 }} 
+                  />
+                : <MaterialIcons name="account-circle" size={80} color={colors.text} />
+                }
+              </LinearGradient>
+            </View>
+          </TouchableOpacity>
 
           <View style={{ flex: 1, paddingVertical: 10 }}>
             {!!title && <Text numberOfLines={1} style={{ fontSize: 14, color: colors.text, fontWeight: '400' }}>{title}</Text>}
@@ -50,14 +61,15 @@ const ProfileCard: React.FC<{
             }
           </View>
           
-          <MaterialIcons style={{ padding: 10, opacity: disabled ? 0 : 1 }}
+          <IconButton 
             name={"chevron-right"}
             size={24}
             color={colors.border}
+            disabled={disabled}
+            onPress={onPress}
           />
           
         </View>
-      </TouchableOpacity>
   )
 }
 

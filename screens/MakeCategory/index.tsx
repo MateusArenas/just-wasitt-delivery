@@ -289,7 +289,7 @@ const FirstRoute: React.FC<{
       style={{ flex: 1 }}
       numColumns={3}
       data={data}
-      contentContainerStyle={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1 }}
       columnWrapperStyle={{ flex: 1 }}
       keyExtractor={item => `${item?._id}` }
       renderItem={({ item } : { item: ProductService.ProductData }) => (
@@ -346,7 +346,7 @@ const SecondRoute: React.FC<{
       style={{ flex: 1 }}
       numColumns={3}
       data={data}
-      contentContainerStyle={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1 }}
       columnWrapperStyle={{ flex: 1 }}
       keyExtractor={item => `${item?._id}` }
       renderItem={({ item } : { item: ProductService.ProductData }) => (

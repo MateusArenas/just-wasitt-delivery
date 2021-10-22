@@ -38,6 +38,7 @@ import MakePromotion from '../screens/MakePromotion';
 import MakeStore from '../screens/MakeStore';
 import Order from '../screens/Order';
 import Orders from '../screens/Orders';
+import Offers from '../screens/Offers';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
@@ -91,6 +92,14 @@ function RootNavigator() {
       />
 
       <Stack.Screen 
+        name="Offers" 
+        component={Offers} 
+        options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Offers'> ) => ({
+          title: route.params.store,
+        })} 
+      />
+
+      <Stack.Screen 
         name="StoreInfo" 
         component={StoreInfo}
         options={({ navigation, route } : StackScreenProps<RootStackParamList, 'StoreInfo'> ) => ({
@@ -126,7 +135,7 @@ function RootNavigator() {
         name="Products" 
         component={Products}
         options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Products'> ) => ({ 
-          title: 'Todos Produtos',
+          title: 'Publicações',
         })}
       />
 

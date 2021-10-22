@@ -80,8 +80,8 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
                 />
               </View>
               {!!data?.about && <Text style={[styles.describe, { color: colors.text, flex: 1 }]} numberOfLines={horizontal ? 1 : 99}>{data?.about}</Text>}
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                {data?.promotions?.length > 0 && <Text style={[styles.subTitle, { color: colors.primary, marginRight: 10 }]} numberOfLines={1}>{
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end' }}>
+                {data?.promotions?.length > 0 && <Text style={[styles.subTitle, { fontSize: 16, color: colors.text, marginRight: 10 }]} numberOfLines={1}>{
                   MaskService.toMask('money', 
                   (
                     data?.price - (data?.price * (Math.max(...data?.promotions?.map(item => item?.percent), 0) / 100))
@@ -95,8 +95,8 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
                   })  
                 }</Text>}
                 {!!data?.price && <Text style={[
-                  styles.subTitle, { color: colors.text}, 
-                  data?.promotions?.length > 0 ? { textDecorationLine: 'line-through' } : {}
+                  styles.subTitle, { color: colors.text, fontSize: 16 }, 
+                  data?.promotions?.length > 0 ? { fontSize: 14, textDecorationLine: 'line-through' } : {}
                 ]} numberOfLines={1}>{
                   MaskService.toMask('money', data?.price as unknown as string, {
                     precision: 2,

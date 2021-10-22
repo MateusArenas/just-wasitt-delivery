@@ -22,11 +22,11 @@ import ContainerButton from '../../components/ContainerButton';
 import ProfileCard from '../../components/ProfileCard';
 import ProfileStatistic from '../../components/ProfileStatistic';
 import AuthContext from '../../contexts/auth';
-import { HeaderStore, HeaderStoreMain } from './Header';
 import { getDay } from 'date-fns';
 import useStoreStatus from '../../hooks/useStoreStatus';
 import Product from '../../models/Product';
 import * as StoreService from '../../services/store';
+import * as ManageService from '../../services/manage'
 import * as FollowerService from '../../services/follower';
 import * as SavedService from '../../services/saved';
 import CardLink from '../../components/CardLink';
@@ -73,56 +73,250 @@ function Store({
   } = useLoadScreen<StoreService.StoreDate>(async () => await StoreService.index({ name: store }))
 
   useEffect(() => { onLoading(); }, [])
-
   const data = response?.data[0]
-
-  const Options = HeaderStore({ navigation, route })
-  const OptionsMain = HeaderStoreMain({ navigation, route }) 
-
-  useFocusEffect(React.useCallback(() => {
-    navigation.setOptions(!!data?.self ? OptionsMain : Options);
-  }, [data]))
 
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
-      // headerTitle: ({ tintColor, children }) => (
-      //   <IconButton style={{ padding: 0 }}
-      //     label={children} 
-      //     name="expand-more" color={colors.text} size={24}
-      //     onPress={() => BottomHalfModal.show(modalize => 
-      //       <FlatList 
-      //         data={data?.otherStores?.map(({ _id, name: store }) => ({
-      //           key: _id,
-      //           color: colors.text,
-      //           title: store,
-      //           onPress: () => navigation.replace('Store', { store })
-      //         })) || []}
-      //         keyExtractor={(item, index) => `${item?.key}-${index}`}
-      //         renderItem={({ item }) => 
-      //           <CardLink 
-      //             title={item?.title}
-      //             color={item?.color}
-      //             onPress={item?.onPress}
-      //             onPressed={modalize?.current?.close}
-      //           />
-      //         }
-      //         ListFooterComponent={
-      //           <View>
-      //             {!!data?.self && 
-      //               <CardLink 
-      //                 title={'Criar Loja'}
-      //                 color={colors.primary}
-      //                 onPress={() => rootNavigation.navigate('NewStore')}
-      //                 onPressed={modalize?.current?.close}
-      //               />
-      //             }
-      //           </View>
-      //         }
-      //       />
-      //     )} 
-      //   />
-      // )
+      headerRight: ({ tintColor }) => (
+        <View style={{ display: 'flex', flexDirection: 'row', }}>
+          {!!data?.self && <IconButton 
+            name={'add-circle-outline'}
+            size={24} 
+            color={colors.text} 
+            onPress={() => BottomHalfModal.show(modalize => 
+              <FlatList 
+              ListHeaderComponent={
+                <View>
+                  <View style={{ padding: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {[
+                      { key: 0, icon: 'local-offer', title: 'Produto', onPress: () => rootNavigation.navigate('MakeProduct', { store: route.params?.store })},
+                      { key: 1, icon: 'tag', title: 'Categoria', onPress: () => rootNavigation.navigate('MakeCategory', { store: route.params?.store })},
+                      { key: 2, icon: 'anchor', title: 'Promoção', onPress: () => rootNavigation.navigate('MakePromotion', { store: route.params?.store })},
+                    ].map(item => (
+                      <View style={{ 
+                        padding: 10, paddingTop: 0,
+                        flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                        marginHorizontal: 5, alignItems: 'center', 
+                      }}>
+                        <IconButton style={{ padding: 20 }}
+                          name={item?.icon as any}
+                          size={24}
+                          color={colors.primary}
+                          onPress={item?.onPress}
+                          onPressed={modalize?.current?.close}
+                        />
+                        <Text style={{ color: colors.primary, fontSize: 12, 
+                          position: 'absolute', bottom: 10
+                        }}>{item?.title}</Text>
+                      </View>
+                    ))}
+                  </View>
+  
+                  <View style={{ padding: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {[
+                      { key: 0, icon: 'group-work', title: 'Adicionais', onPress: () => rootNavigation.navigate('MakeProduct', { store: route.params?.store })},
+                      // { key: 0, icon: 'work', title: 'Serviço', onPress: () => rootNavigation.navigate('MakeProduct', { store: route.params?.store })},
+                      { key: 1, icon: 'local-attraction', title: 'Cupom', onPress: () => rootNavigation.navigate('MakeCategory', { store: route.params?.store })},
+                      { key: 2, icon: 'local-fire-department', title: 'Liquidação', onPress: () => rootNavigation.navigate('MakePromotion', { store: route.params?.store })},
+                    ].map(item => (
+                      <View style={{ 
+                        padding: 10, paddingTop: 0,
+                        flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                        marginHorizontal: 5, alignItems: 'center', 
+                      }}>
+                        <IconButton style={{ padding: 20 }}
+                          name={item?.icon as any}
+                          size={24}
+                          color={colors.primary}
+                          onPress={item?.onPress}
+                          onPressed={modalize?.current?.close}
+                        />
+                        <Text style={{ color: colors.primary, fontSize: 12, 
+                          position: 'absolute', bottom: 10
+                        }}>{item?.title}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={{ padding: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {[
+                      { key: 0, icon: 'work', title: 'Serviço', onPress: () => rootNavigation.navigate('MakeProduct', { store: route.params?.store })},
+                      // { key: 0, icon: 'work', title: 'Serviço', onPress: () => rootNavigation.navigate('MakeProduct', { store: route.params?.store })},
+                      { key: 1, icon: 'delivery-dining', title: 'Entrega', onPress: () => rootNavigation.navigate('MakeCategory', { store: route.params?.store })},
+                      { key: 2, icon: 'pause', title: 'Pausa', onPress: () => rootNavigation.navigate('MakePromotion', { store: route.params?.store })},
+                    ].map(item => (
+                      <View style={{ 
+                        padding: 10, paddingTop: 0,
+                        flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                        marginHorizontal: 5, alignItems: 'center', 
+                      }}>
+                        <IconButton style={{ padding: 20 }}
+                          name={item?.icon as any}
+                          size={24}
+                          color={colors.primary}
+                          onPress={item?.onPress}
+                          onPressed={modalize?.current?.close}
+                        />
+                        <Text style={{ color: colors.primary, fontSize: 12, 
+                          position: 'absolute', bottom: 10
+                        }}>{item?.title}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {/* 
+                  <Text style={{ 
+                    padding: 10, textAlign: 'center', opacity: .5, 
+                    fontSize: 12, color: colors.text 
+                  }}>{'Escolha uma das opções a cima a ser adicionada'}</Text> */}
+                </View>
+              }
+              data={[]}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={item => `${item?.key}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === 1 ? 10 : 0, borderBottomRightRadius: index === 1 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === 1 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== 1}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )} 
+          />}
+          <IconButton 
+            name={data?.self ? "menu" : "more-horiz"} 
+            size={24} 
+            color={colors.text} 
+            onPress={() => BottomHalfModal.show(modalize => 
+              <FlatList
+              ListHeaderComponentStyle={{ padding: 5 }}
+              ListHeaderComponent={
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {[
+                    { key: 0, icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => navigation.navigate('MakeProduct', { store, id })},
+                    { key: 1, icon: 'link', color: colors.text, title: 'Link', onPress: () => navigation.navigate('MakeProduct', { store, id })},
+                    { key: 2, icon: 'sim-card-alert', color: 'red', title: 'Denunciar', onPress: () => {} },
+                  ].map(item => (
+                    <View style={{ 
+                      padding: 10, paddingTop: 0,
+                      flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
+                      marginHorizontal: 5, alignItems: 'center', 
+                    }}>
+                      <IconButton style={{ padding: 20 }}
+                        name={item?.icon as any}
+                        size={24}
+                        color={item?.color}
+                        onPress={item?.onPress}
+                        onPressed={modalize?.current?.close}
+                      />
+                      <Text style={{ color: item?.color, fontSize: 12, 
+                        position: 'absolute', bottom: 10
+                      }}>{item?.title}</Text>
+                    </View>
+                  ))}
+                </View>
+                // <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Produto'}</Text>
+              } 
+              data={
+                data?.self ? [
+                  { key: 0, icon: 'account-circle', color: colors.text, title: 'Conta', onPress: () => navigation.navigate('Account')},
+                  { key: 1, icon: 'business', color: colors.text, title: 'Pedidos', onPress: () => navigation.navigate('Orders', { store: route.params?.store })},
+                  { key: 2, icon: 'delete', color: 'red', title: 'Remover', onPress: async function onRemove () {
+                    try {
+                      await ManageService.remove({ id: data?._id  })
+                      navigation.replace('Account')
+                    } catch(err) {
+                
+                    }
+                  } },
+                ] : []
+              }
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyExtractor={(item, index) => `${item?.key}-${index}`}
+              renderItem={({ item, index }) => 
+                <CardLink style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
+                    borderBottomLeftRadius: index === 2 ? 10 : 0, borderBottomRightRadius: index === 2 ? 10 : 0,
+                    marginTop: index === 0 ? 10 : 0, marginBottom: index === 2 ? 10 : 0,
+                    marginHorizontal: 10,
+                  }}
+                  border={index !== 2}
+                  titleContainerStyle={{ padding: 10 }}
+                  title={item?.title}
+                  right={
+                    <MaterialIcons style={{ padding: 20 }}
+                      name={item?.icon as any}
+                      size={24}
+                      color={item?.color}
+                    />
+                  }
+                  color={item?.color}
+                  onPress={item?.onPress}
+                  onPressed={modalize?.current?.close}
+                />
+              }
+              ListFooterComponent={
+                <View>
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ padding: 10 }}
+                    title={'Sobre'}
+                    right={
+                      <MaterialIcons style={{ padding: 20 }}
+                        name={'info-outline'}
+                        size={24}
+                        color={colors.text}
+                      />
+                    }
+                    color={colors.text}
+                    onPress={() => navigation.navigate('StoreInfo', { store: route?.params?.store })}
+                    onPressed={modalize?.current?.close}
+                  />
+                  <CardLink border={false}
+                    style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
+                    titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
+                    title={'Cancelar'}
+                    right={null}
+                    color={colors.text}
+                    onPress={modalize?.current?.close}
+                  />
+                </View>
+              }
+            />
+            )} 
+          />
+        </View>
+      ),
     });
   }, [navigation, data, user, BottomHalfModal]))
 
@@ -170,6 +364,14 @@ function Store({
               ))}
             </View>
           )}
+          TabListHeaderComponent={
+            <IconButton style={{ paddingHorizontal: 20 }}
+              name={'search'}
+              color={colors.text}
+              size={24}
+              onPress={() => navigation.navigate('Products', { store })}
+            />
+          }
           TabContainerComponet={props => 
             <BlurView {...props} style={{ borderBottomWidth: 1, borderColor: colors.border }} 
               intensity={100} tint={dark ? 'dark' : 'light'} 
@@ -202,19 +404,20 @@ function Store({
         
       </PullToRefreshView>
 
-      {(ServiceCart?.response?.data?.length > 0 && totalPrice) && 
+      {(ServiceCart?.response?.data?.length > 0) && 
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
         onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
       >
         <BlurView style={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} 
           intensity={100} tint={dark ? 'dark' : 'light'}
         >
-          <CardLink border={false}
+          {/* <CardLink border={false}
             left={
               <MaterialIcons style={{ padding: 10 }} name="shopping-bag" size={24} color={colors.text} />
             }
             tintColor={colors.primary}
             title={
+              !totalPrice ? undefined :
               MaskService.toMask('money', totalPrice as unknown as string, {
                 precision: 2,
                 separator: ',',
@@ -224,9 +427,9 @@ function Store({
               })
             }
             color={colors.text}
-            rightLabel={totalQuantity}
+            rightLabel={!totalQuantity ? undefined : totalQuantity}
             onPress={() => navigation.navigate('Bag', { store })}
-          />
+          /> */}
         </BlurView>
       </View>}
     </View>
@@ -259,32 +462,6 @@ const Main: React.FC<{ store: StoreDate} & { onLayout?: (event: LayoutChangeEven
   return (
   <View style={{ backgroundColor: colors.card }}>
 
-    <SwiperFlatList horizontal
-      style={{ backgroundColor: colors.card }}
-      nestedScrollEnabled
-      PaginationComponent={() => null}
-      index={0}
-      showPagination
-      data={data?.promotions}
-      // data={[{ uri: 'https://i.pinimg.com/originals/44/10/b3/4410b3605284deaed85c4e89ab2f4b5c.jpg' }, { uri: 'https://i.pinimg.com/originals/40/21/73/402173fd8d2200ec9c808dd28fee757d.jpg' }]}
-      renderItem={({ item }) => 
-        <TouchableOpacity onPress={() => navigation.navigate('Promotion', { store, id: item?._id })}>
-          <View style={{ 
-            width: width-20, height: 160, 
-            padding: 10, paddingRight: 5, paddingBottom: 0,
-            marginVertical: 10, marginBottom: 0, 
-          }}>
-            <Image style={{ 
-              width: '100%', height: '100%',
-              backgroundColor: colors.background, borderRadius: 4, 
-            }}
-              source={{ uri: item?.uri ? item?.uri : 'https://i.pinimg.com/originals/44/10/b3/4410b3605284deaed85c4e89ab2f4b5c.jpg' }}
-            />
-          </View>
-        </TouchableOpacity>
-      }
-    />
-
     <ProfileCard style={{ padding: 0 }}
       uri={data?.uri}
       statusColor={isOpen ? colors.primary : 'red'}
@@ -292,13 +469,14 @@ const Main: React.FC<{ store: StoreDate} & { onLayout?: (event: LayoutChangeEven
       title={`${data?.city} - ${data?.state}`}
       about={data?.about}
       onPress={() => rootNavigation.navigate('StoreInfo', { store })}
+      onPressIn={() => rootNavigation.navigate('Offers', { store })}
     />
     <ProfileStatistic 
       data={[
         { 
-          title: 'produtos', 
-          numbers: Number(data?.products?.length), 
-          disabled: data?.products?.length === 0, 
+          title: 'publicações', 
+          numbers: Number(data?.products?.length | 0) + Number(data?.combos?.length | 0) + Number(data?.works?.length | 0), 
+          disabled: true, 
           onPress: () => navigation.navigate('Products', { store }) 
         },
         { 

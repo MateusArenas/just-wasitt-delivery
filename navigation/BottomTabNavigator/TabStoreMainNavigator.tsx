@@ -136,7 +136,7 @@ function TabAccountNavigator({
         name="Products" 
         component={Products}
         options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Products'> ) => ({ 
-          title: 'Todos Produtos',
+          title: 'Publicações',
         })}
       />
       

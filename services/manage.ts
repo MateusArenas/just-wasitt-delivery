@@ -101,6 +101,16 @@ export async function create ({ body } : { body: any }) {
   } 
 }
 
+export async function remove ({ id } : { id: string }) {
+  try {
+    const response = await api.delete(`/manage/${id}`)
+    
+    return Promise.resolve(response as AxiosResponse<Array<ManageDate>>)
+  } catch(err) { 
+    return Promise.reject(err as AxiosError<errorData>)
+  } 
+}
+
 export async function search ({ id } : { id: string }) {
   try {
     const response = await api.get(`/manage/${id}`)
