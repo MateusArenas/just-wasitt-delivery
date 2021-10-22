@@ -100,7 +100,7 @@ function Product({
     * valor
   )
 
-  const total = !additionals ? valor+additionals 
+  const total = data?.single ? valor+additionals 
   : additionals <= (valor+teto) ? valor
   : valor+(additionals-(valor+teto))
 
@@ -396,9 +396,9 @@ function Product({
                 unit: 'R$ ',
                 suffixUnit: ''
             })}
-            subTitleStyle={{ textDecorationLine: !(!data?.single && total > additionals) ? 'line-through' : 'none' }}
+            subTitleStyle={{ textDecorationLine: !(!data?.single && total > additionals) && data?.offset ? 'line-through' : 'none' }}
             subTitle={ (!additionals) ? undefined :
-              MaskService.toMask('money', (data?.single ? total+additionals : additionals) as unknown as string, {
+              MaskService.toMask('money', (data?.single ? valor+additionals : additionals) as unknown as string, {
                 precision: 2,
                 separator: ',',
                 delimiter: '.',
