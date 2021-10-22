@@ -7,14 +7,17 @@ import * as ProductService from './product'
 import * as StoreService from './store'
 import { StoreDate } from './store'
 
+interface component {
+  components: Array<component>
+  product: ProductService.ProductData & any
+  quantity: number
+}
+
 interface errorData { error: string }
 export interface cartData { 
   _id: string
   store: string & StoreDate
-  components: Array<{
-    product: ProductService.ProductData & any
-    quantity: number
-  }>
+  components: Array<component>
   product: ProductService.ProductData & any
   comment?: string
   quantity: number

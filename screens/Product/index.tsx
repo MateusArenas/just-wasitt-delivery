@@ -269,9 +269,48 @@ function Product({
 
 
   function handleProducts ({ product, quantity }) {
-    const others = state?.components?.filter(item => item?.product !== product)
-    const components =  quantity !== 0 ? [...others, { product, quantity }] : others
-    setState({ ...state, components })
+    const find = state?.components?.find(item => item?.product === product)
+    if (find) {
+      setState({ ...state, 
+        components: [
+          ...state?.components?.filter(item => item?.product !== product), 
+          { ...find,  quantity }
+        ] 
+      })
+    } else {
+      setState({ ...state, 
+        components: [
+          ...state?.components, 
+          { product, quantity, components: [] }
+        ] 
+      })
+    }
+  }
+
+  function handleSubProducts ({ id, product, quantity }) {
+    const parent = state?.components?.find(item => item?.product === id)
+    const find = parent?.components?.find(item => item?.product === product)
+    if (find) {
+      setState({ ...state, 
+        components: [
+          ...state?.components?.filter(item => item?.product !== id), 
+          {...parent, components: [
+            ...parent?.components?.filter(item => item?.product !== product),
+            {...find, product, quantity }
+          ] }
+        ] 
+      })
+    } else {
+      setState({ ...state, 
+        components: [
+          ...state?.components?.filter(item => item?.product !== id), 
+          {...parent, components: [
+            ...parent?.components,
+            { product, quantity, components: [] }
+          ] }
+        ] 
+      })
+    }
   }
 
   if (loading === 'LOADING') return <Loading />
@@ -355,13 +394,35 @@ function Product({
 
             <Text style={{ color: colors.text, fontWeight: '500', fontSize: 16, padding: 10 }}>Adicione ao produto</Text>
             {data?.products?.map(item => (
-              <CartProduct
-                onPress={() => navigation.push('Product', { store, id: item?._id })}
-                onChangeQuantity={quantity => handleProducts({ product: item?._id, quantity })}
-                product={item}
-                quantity={state?.components?.find(({ product }) => product === item?._id)?.quantity | 0}
-                comment={item?.about}
-              /> 
+              <View>
+                <CartProduct
+                  onPress={() => navigation.push('Product', { store, id: item?._id })}
+                  onChangeQuantity={quantity => handleProducts({ product: item?._id, quantity })}
+                  product={item}
+                  quantity={state?.components?.find(({ product }) => product === item?._id)?.quantity}
+                  comment={item?.about}
+                /> 
+                {state?.components?.find(({ product }) => product === item?._id)?.quantity > 0 &&
+                <View style={{ paddingLeft: 30 }}>
+                  {item?.products.map(subItem => (
+                    <View style={{ paddingLeft: 20 }}>
+                      <MaterialIcons style={{ position: 'absolute', padding: 10 }}
+                        name={'subdirectory-arrow-right'} 
+                        size={24} color={colors.text} 
+                      />
+                      <CartProduct minimize
+                        onPress={() => navigation.push('Product', { store, id: subItem?._id })}
+                        onChangeQuantity={quantity => handleSubProducts({ id: item?._id, product: subItem?._id, quantity })}
+                        product={subItem}
+                        quantity={
+                          state?.components?.find(({ product }) => product === item?._id)?.components?.find(({ product }) => product === subItem?._id)?.quantity 
+                        }
+                        comment={subItem?.about}
+                      />
+                    </View> 
+                  ))}
+                </View>}
+              </View>
             ))}
 
             <Text style={{ color: colors.text, fontWeight: '500', fontSize: 16, padding: 10 }}>{'Observações'}</Text>
@@ -464,6 +525,7 @@ const styles = StyleSheet.create({
 
 
 interface CartProductProps {
+  minimize?: boolean
   product: ProductService.ProductData
   quantity: number
   comment: string
@@ -476,14 +538,13 @@ const CartProduct: React.FC<CartProductProps> = ({
   comment,
   onChangeQuantity,
   onPress,
+  minimize=false
 }) => {
-  const { width } = useWindowDimensions()
   const { colors } = useTheme()
   
   
   return (
       <View style={{ 
-        width, 
         // padding: 10,
         flexDirection: 'row', 
         alignItems: 'center', 
@@ -493,15 +554,18 @@ const CartProduct: React.FC<CartProductProps> = ({
           <View style={{ flex: 1 }}>
             <TouchableOpacity onPress={onPress}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                <Image source={{ uri: product?.uri }} style={{ 
+                {!minimize ? <Image source={{ uri: product?.uri }} style={[{ 
                   margin: 10,
                   height: 75, width: 75, 
                   backgroundColor: colors.border, borderRadius: 4,
                   // borderWidth: 1, borderColor: colors.border
-                }}/>
+                }]}/> :
+                <></>
+                  // <MaterialIcons name={'subdirectory-arrow-right'} size={24} color={colors.text} />
+                }
                 <View style={{ flex: 1, alignItems: 'stretch', padding: 10 }}>
                   <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{product?.name}</Text>
-                  <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14,  opacity: .8 }}>{comment ? comment : product?.about}</Text>
+                  {!minimize && <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14,  opacity: .8 }}>{comment ? comment : product?.about}</Text>}
                   <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
                     {product?.promotions?.length > 0 && 
                     <Text numberOfLines={1} style={{ marginRight: 5, color: colors.text, fontSize: 16, fontWeight: '500', opacity: .8 }}>{
@@ -542,7 +606,7 @@ const CartProduct: React.FC<CartProductProps> = ({
 
         <View style={{ height: '100%' }}>
           <View style={{ flex: 1 }}>
-            <InputCount 
+            <InputCount maxValue={product?.spinOff ? 1 : 99}
               value={quantity}
               onChangeValue={onChangeQuantity}
               tintColor={colors.text}

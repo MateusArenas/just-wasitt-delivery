@@ -38,34 +38,67 @@ const InputCount: React.FC<InputCountProps> = ({
   const onDecrease = () => onChangeValue && onChangeValue(value-1)
   const onIncrease = () => onChangeValue && onChangeValue(value+1)
 
+  const disableDecrease = (typeof minValue !== 'undefined' 
+    ? value <= minValue : false
+  )
+
+  const disableIncrease = (typeof maxValue !== 'undefined' 
+    ? value >= maxValue : false
+  )
+
+  const binarySwitch = (minValue === 0 && maxValue === 1)
+
   return (
     <Container style={{ flexDirection: vertical ? 'column-reverse' : 'row' }} >
-      <IconButton
+      {<IconButton
+        style={{ 
+          opacity: (binarySwitch) ? 0 : 1,
+          padding: (binarySwitch) ? 1.25 : 10
+        }}
         name={decreaseIcon}
         color={colors.text}
         size={24}
-        disabled={(typeof minValue !== 'undefined' 
-          ? value <= minValue : false
-        )}
+        disabled={disableDecrease}
         onPress={onDecrease}
-      />
+      />}
 
-      <View style={{ flexDirection: 'row' }}>
+
+      {(binarySwitch && !disableDecrease)  && <IconButton
+        // style={{ padding: 0 }}
+        name={decreaseIcon}
+        color={colors.text}
+        size={24}
+        disabled={disableDecrease}
+        onPress={onDecrease}
+      />}
+
+      {!binarySwitch && <View style={{ flexDirection: 'row' }}>
         {children}
         {!children && <Number style={{ color: tintColor ? tintColor : colors?.text, fontWeight: '500' }}>
           {value}
         </Number>}
-      </View>
-      
-      <IconButton 
+      </View>}
+
+      {(binarySwitch && !disableIncrease) &&<IconButton 
+        // style={{ padding: 0 }}
         name={increaseIcon}
         color={colors.text}
         size={24}
-        disabled={(typeof maxValue !== 'undefined' 
-          ? value >= maxValue : false
-        )}
+        disabled={disableIncrease}
         onPress={onIncrease}
-      />
+      />}
+      
+      {<IconButton 
+        style={{ 
+          opacity: (binarySwitch) ? 0 : 1,
+          padding: (binarySwitch) ? 1.25 : 10
+        }}
+        name={increaseIcon}
+        color={colors.text}
+        size={24}
+        disabled={disableIncrease}
+        onPress={onIncrease}
+      />}
     </Container>
   )
 }
