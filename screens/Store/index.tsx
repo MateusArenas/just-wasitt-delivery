@@ -34,6 +34,8 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import SwiperFlatList, { Pagination } from 'react-native-swiper-flatlist';
 import { MaskService } from 'react-native-masked-text';
+import useProductPrice from '../../hooks/useProductPrice';
+import SnackBarContext from '../../contexts/snackbar';
 
 function Store({ 
   navigation,
@@ -51,15 +53,41 @@ function Store({
   
   const ServiceCart = useService<BagService.bagData>(BagService, 'search', { id: store, userId: user?._id }, [user])
   useFocusEffect(useCallback(() => { ServiceCart.onService('search', { id: store, userId: user?._id }) }, [user]))
-  const totalPrice = ServiceCart?.response?.data[0]?.bundles?.map(({ product, quantity }) => 
-    ( product?.price - 
-      (
-        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-        * product?.price
-      )
-    ) * quantity
-  )?.reduce((acc, cur) => acc + cur, 0) 
-  const totalQuantity = ServiceCart?.response?.data[0]?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
+  
+  const bag = ServiceCart?.response?.data[0]
+
+  function additionals (data, c) {
+    return (c?.length > 0) ?
+    c?.map(({ product: {_id}, quantity, components }) => {  
+      const product = data?.products?.find(item => item?._id === _id)
+
+      const subAdditionals = (components?.length > 0) ? 
+        components?.map(({ product: { _id: sub_id }, quantity: subQuantity, components }) => {  
+        const subProduct = product?.products?.find(item => item?._id === sub_id)
+        return ( subProduct?.price 
+          - 
+          (
+            (Math.max(...subProduct?.promotions?.map(item => item?.percent), 0) / 100 )
+            * subProduct?.price
+          )
+        ) * subQuantity
+      })?.reduce((acc, cur) => acc + cur, 0) : 0
+
+      return (( product?.price 
+        - 
+        (
+          (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
+          * product?.price
+        )
+      ) * quantity) + (quantity > 0 ? subAdditionals : 0)
+    })?.reduce((acc, cur) => acc + cur, 0)
+    : 0
+  }
+  
+  const totalPrice = bag?.bundles?.map(bundle => {
+    return useProductPrice(bundle) * bundle?.quantity
+  })?.reduce((acc, cur) => acc + cur, 0) 
+  const totalQuantity = bag?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
 
   const rootNavigation = useRootNavigation()
 
@@ -320,6 +348,35 @@ function Store({
     });
   }, [navigation, data, user, BottomHalfModal]))
 
+  const Snackbar = useContext(SnackBarContext)
+
+  useFocusEffect(useCallback(() => {
+    Snackbar?.show({
+      onPress: () => navigation.navigate('Bag', { store }),
+      // visible: true,
+      messageColor: colors.text,
+      position: "bottom",
+      bottom,
+      icon: 'shopping-bag',
+      iconColor: colors.text,
+      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
+        precision: 2,
+        separator: ',',
+        delimiter: '.',
+        unit: 'R$ ',
+        suffixUnit: ''
+      }),
+      indicatorIcon: true,
+      // onClose: () => setActionItems([]),
+      actionText: `${totalQuantity}`,
+      accentColor: colors.primary,
+    })
+
+    return () => Snackbar?.hide()
+
+  }, [totalPrice, totalQuantity, bottom]))
+  
+
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('Store', { store })}/>
   if (!response.ok) return <NotFound title={`This store doesn't exist.`} redirectText={`Go to home screen!`}/>
@@ -404,14 +461,14 @@ function Store({
         
       </PullToRefreshView>
 
-      {(ServiceCart?.response?.data?.length > 0) && 
+      {/* {(totalQuantity > 0) && 
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
         onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
       >
         <BlurView style={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} 
           intensity={100} tint={dark ? 'dark' : 'light'}
         >
-          {/* <CardLink border={false}
+          <CardLink border={false}
             left={
               <MaterialIcons style={{ padding: 10 }} name="shopping-bag" size={24} color={colors.text} />
             }
@@ -429,9 +486,9 @@ function Store({
             color={colors.text}
             rightLabel={!totalQuantity ? undefined : totalQuantity}
             onPress={() => navigation.navigate('Bag', { store })}
-          /> */}
+          />
         </BlurView>
-      </View>}
+      </View>} */}
     </View>
   )
 }

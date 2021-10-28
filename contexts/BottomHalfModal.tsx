@@ -36,6 +36,7 @@ export const BottomHalfModalProvider: React.FC = ({ children }) => {
           borderBottomRightRadius: 0, 
           borderBottomLeftRadius: 0,
           backgroundColor: 'transparent',
+          zIndex: 999
         }}
         handlePosition='inside'
         handleStyle={{ backgroundColor: colors.border }}

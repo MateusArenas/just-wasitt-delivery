@@ -19,7 +19,6 @@ import NotFound from '../../components/NotFound';
 import Card from '../../components/Card';
 import InputCount from '../../components/InputCount';
 import { useDebounceHandler, useDebounceState } from '../../hooks/useDebounce';
-import SnackBar from '../../components/SnackBar'
 import { writeAndress, writePrice } from '../../utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TextInputLabel from '../../components/TextInputLabel';
@@ -41,6 +40,31 @@ import useLoadScreen from '../../hooks/useLoadScreen';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { MaskService } from 'react-native-masked-text';
+import useProductPrice from '../../hooks/useProductPrice';
+import ProductCard from '../../components/ProductCard';
+import SnackBarContext from '../../contexts/snackbar';
+
+
+const initialState = { 
+  selecteds: []
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'init':
+      return { ...state, ...action?.payload };
+    case 'select':
+      return { ...state, 
+        selecteds: state?.selecteds?.find(id => action?.payload === id) 
+        ? state?.selecteds?.filter(id => action?.payload !== id) 
+        : [ ...state?.selecteds, action?.payload ]
+      };
+    case 'setSelecteds':
+      return { ...state, selecteds: action?.payload };
+    default:
+      throw new Error();
+  }
+}
 
 export interface BagState {
   name?: string
@@ -59,6 +83,8 @@ export default function Bag({
   const bottom = useContext(BottomTabBarHeightContext) || 0
   const [extraBottom, setExtraBottom] = React.useState(0)
 
+  const [{ selecteds }, dispatch] = React.useReducer(reducer, initialState);
+
   const { signed, andress, phoneNumber, user } = useContext(AuthContext)
   const { colors, dark } = useTheme()
   const { store } = route.params
@@ -73,10 +99,8 @@ export default function Bag({
   })
 
   const SnackBarRef = useRef(null)
-  const [actionItems, setActionItems] = useState([])
 
   const rootNavigation = useRootNavigation()
-  const [selecteds, setSelecteds] = React.useState<Array<string>>([])
   const [editMode, setEditMode] = React.useState(false)
   
   const { 
@@ -95,6 +119,11 @@ export default function Bag({
 
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
+  useEffect(() => {
+    if (loading) setEditMode(false)
+  }, [loading])
+
+
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       headerTitle: props => 
@@ -111,11 +140,11 @@ export default function Bag({
         <View style={{ flexDirection: 'row', paddingHorizontal: 10 }}>
           {data?.bundles?.length > 0 &&
           <TextButton 
-            label={editMode ? selecteds.length > 0 ? 'Fazer' : 'Tudo' : 'Editar'}
+            label={editMode ? (selecteds.length > 0)? 'Fazer' : 'Tudo' : 'Editar'}
             fontSize={18}
             color={colors.primary}
             onPress={() => (editMode && selecteds.length === 0) ? 
-              setSelecteds(data?.bundles?.map(item => item?._id))
+              dispatch({type: 'setSelecteds', payload: data?.bundles?.map(item => item?._id) })
               : setEditMode(true)
             }
             onPressed={() => (editMode && selecteds.length > 0) &&  BottomHalfModal.show(modalize => 
@@ -156,10 +185,10 @@ export default function Bag({
                       <MaterialIcons style={{ padding: 20 }}
                         name={'delete'}
                         size={24}
-                        color={'red'}
+                        color={colors.notification}
                       />
                     }
-                    color={'red'}
+                    color={colors.notification}
                     onPress={() => onClear(selecteds)}
                     onPressed={modalize?.current?.close}
                   />
@@ -181,27 +210,69 @@ export default function Bag({
       headerLeft: props => editMode 
       ? <HeaderBackButton {...props} label={'Sair'} onPress={() => {
           setEditMode(false)
-          setSelecteds([])
+          dispatch({type: 'setSelecteds', payload: [] })
         }}/> 
       : props.canGoBack && <HeaderBackButton {...props} />,
     });
-  }, [setEditMode, editMode, setSelecteds, selecteds, response]))
+  }, [setEditMode, editMode, selecteds, response]))
 
-  function onSelected (id: string) {
-    if (selecteds?.find(item => item === id)) {
-      setSelecteds(selecteds => selecteds?.filter(item => item !== id))
-    } else {
-      setSelecteds(selecteds => [...selecteds, id])
-    }
-  }
+  const Snackbar = useContext(SnackBarContext)
 
   async function onClear (selecteds: Array<string>) {
     try {
       selecteds.map(onRemove)
-      setSelecteds([])
+      dispatch({type: 'setSelecteds', payload: [] })
       setEditMode(false)
+      Snackbar?.push({
+        visible: true,
+        autoHidingTime: 10000,
+        messageColor: colors.text,
+        position: "bottom",
+        icon: 'shopping-bag',
+        iconColor: colors.text,
+        // leftComponent: 
+        //   <View style={{ 
+        //     margin: 10, marginRight: 0,
+        //     backgroundColor: colors?.notification, borderRadius: 30, overflow: 'hidden',
+        //     minWidth: 24, maxHeight: 24,
+        //     alignItems: 'center', justifyContent: 'center',
+        //   }}>
+        //     <Text numberOfLines={1} style={{ 
+        //       alignSelf: 'center', textAlign: 'center',
+        //       flex: 1, flexDirection: 'row',
+        //       padding: 5,
+        //       color: 'white',
+        //       fontWeight: '500',
+        //       fontSize: 12,
+        //     }}>{
+        //       selecteds?.map(id => 
+        //         data?.bundles?.find(item => item?._id === id)?.quantity
+        //       )?.reduce((acc, val) => acc+val, 0)
+        //     }</Text>
+        //   </View>
+        // ,
+        textMessage: selecteds?.map(id => {
+          const find = data?.bundles?.find(item => item?._id === id)
+          return `${find?.product?.name}`
+        })?.join(', '),
+        textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+        MaskService.toMask('money', data?.store?.minDeliveryBuyValue as unknown as string, {
+          precision: 2,
+          separator: ',',
+          delimiter: '.',
+          unit: 'R$ ',
+          suffixUnit: ''
+        })),
+        // onClose: () => setActionItems([]),
+        actionHide: true,
+        actionHandler: () => onBulkCreate(selecteds),
+        actionText: "DESFAZER",
+        accentColor: colors.primary,
+      })
     } catch (err) {}
   }
+
+
 
   async function onRemove (_id :string ) {
     try {
@@ -211,32 +282,59 @@ export default function Bag({
           const bundles = data?.bundles?.filter(item => item?._id !== _id)
           return [{ ...data, bundles }]
         } catch (err) {}
-      })
-      rootNavigation.refresh('Root')
+      }, true)
+      // rootNavigation.refresh('Root')
     } catch (err) {}
   }
 
-  const onOpen = id => navigation.navigate('Product', { store, id })
   
   const onUpdate = (_item, quantity) => onService(async () => {
     try {
-      const body = { ..._item, product: _item?.product?._id, quantity }
-      await BundleService.update({ store, userId: user?._id, body })
+      await BundleService.update({ store, userId: user?._id, body: {
+        ..._item,
+        quantity,
+        product: _item?.product?._id,
+        components: _item?.components?.map(byItem => ({
+          ...byItem,
+          product: byItem?.product?._id,
+          components: byItem?.components?.map(subItem => ({
+            ...subItem,
+            product: subItem?.product?._id,
+          }))
+        }))
+      } })
       const bundles = data?.bundles?.map(item => item?._id === _item?._id ? ({..._item, quantity}) : item)
 
       return [{ ...data, bundles }]
     } catch (err) {}
   }, true)
 
-  const onBulkCreate = React.useCallback((items) => {
-    onService('save', items)
-    setActionItems([])
-    SnackBarRef.current?.close()
-  }, [onService, setActionItems, SnackBarRef])
+  async function onBulkCreate (items) {
+    console.log('estagio 00000000', items);
+    
+    const bundles = await Promise.all(items?.map(async item => {
 
-  const build_cart = (item) : CartService.cartData => {
-    const product = typeof item?.product !== 'string' ? item?.product?._id : item?.product
-    return ({ ...item, store, product }) 
+      console.log('estagio 00000000 - 2');
+      const find = data?.bundles?.find(_item => _item?._id === item)
+      const body = ({
+        ...find,
+        product: find?.product?._id,
+        store: find?.store?._id,
+        components: find?.components?.map(byItem => ({
+          ...byItem,
+          product: byItem?.product?._id,
+          components: find?.components?.map(subItem => ({
+            ...subItem,
+            product: subItem?.product?._id,
+          }))
+        })),
+      })
+
+      await BundleService.create({  store, userId: user?._id, body })
+
+      return find
+    })) 
+    onRefresh()
   }
 
   useEffect(() => { 
@@ -259,20 +357,41 @@ export default function Bag({
     }
   } ,[user, setState])
 
-  const [totalPrice, setTotalPrice] = React.useState<number>(0)
-  useEffect(() => {
-    setTotalPrice(
-      products?.map(item => 
-        (
-          item.product?.price - 
-          (
-            (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
-            * item.product?.price
-          )
-        ) 
-        * item.quantity)?.reduce((acc, cur) => acc + cur, 0)
-      )
-  } ,[products])
+  const totalPrice = products?.map(item => useProductPrice(item) * item?.quantity)?.reduce((acc, cur) => acc + cur, 0)
+
+  useFocusEffect(useCallback(() => {
+    Snackbar?.show({
+      // visible: true,
+      messageColor: colors.text,
+      position: "bottom",
+      icon: 'shopping-bag',
+      iconColor: colors.text,
+      bottom,
+      textDirection: 'row',
+      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
+        precision: 2,
+        separator: ',',
+        delimiter: '.',
+        unit: 'R$ ',
+        suffixUnit: ''
+      }),
+      textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+      MaskService.toMask('money', data?.store?.minDeliveryBuyValue as unknown as string, {
+        precision: 2,
+        separator: ',',
+        delimiter: '.',
+        unit: 'R$ ',
+        suffixUnit: ''
+      })),
+      // onClose: () => setActionItems([]),
+      actionHandler: () => navigation.navigate('Checkout', { store }),
+      actionText: "AVANÇAR",
+      accentColor: colors.primary,
+    })
+    return () => Snackbar?.hide()
+  }, [totalPrice, bottom]))
+
+
 
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('Bag')}/>
@@ -282,14 +401,17 @@ export default function Bag({
     <View style={{ flex: 1, paddingBottom: bottom }}>
       <PullToRefreshView
         offset={top}
-        disabled={disabled}
+        disabled={editMode || disabled}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
       >
           <FlatList style={{ flex: 1 }}
-            contentContainerStyle={{ paddingTop: top, paddingBottom: bottom+extraBottom }}
-            scrollIndicatorInsets={{ top, bottom: bottom+extraBottom }}
+            contentContainerStyle={[
+              { flexGrow: 1, backgroundColor: colors.card },
+              { marginTop: top, paddingBottom: bottom+Snackbar?.snackbarHeight },
+            ]}
+            scrollIndicatorInsets={{ top, bottom: bottom+Snackbar?.snackbarHeight }}
             ListEmptyComponent={
               <View style={{ padding: 10,flex: 1, width: '100%'  }}>
                   <ContainerButton border transparent
@@ -304,54 +426,94 @@ export default function Bag({
               <View style={{ 
                 padding: 10,
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                borderBottomWidth: 1, borderColor: colors.border
               }}>
                 <TextButton 
                   label={'Compartilhar'}
-                  color={colors.primary}
+                  color={colors.text}
                   fontSize={16}
                   onPress={() => navigation.navigate('Store', { store })}
                 />
                 <TextButton 
                   label={'Adicionar'}
-                  color={colors.primary}
+                  color={colors.text}
                   fontSize={16}
                   onPress={() => navigation.navigate('Store', { store })}
                 />
               </View>
             }            
+            ListFooterComponentStyle={{ flex: 1 }}
+            ListFooterComponent={
+              <TouchableOpacity disabled={!editMode} 
+                onPress={() => setEditMode(false)} 
+                style={{ flex: 1 }}
+              />
+            }
             data={data?.bundles}
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             renderItem={({ item }) => (
-              <CartProduct 
-                editMode={editMode}
-                selected={(!!selecteds?.find(id => id === item?._id) && editMode)}
-                onPress={() => editMode ? onSelected(item?._id) 
-                  : navigation.navigate('Product', { store, id: item?.product?._id })
-                }
-                onChangeQuantity={quantity => onUpdate(item, quantity)}
-                product={item?.product}
-                quantity={item?.quantity}
-                comment={item?.comment}
-              /> 
+                  <View>
+                    <TouchableOpacity disabled={!editMode} onPress={() => dispatch({type: 'select', payload: item?._id })}>
+                      <View style={[
+                        { flexDirection: 'row', alignItems: 'center' },
+                        { backgroundColor: (selecteds?.find(id => id === item?._id) && editMode) ? colors?.border : 'transparent'}
+                      ]}>
+                        {editMode && <IconButton 
+                          name={!!selecteds?.find(id => id === item?._id) ? 'check-circle-outline' : 'circle'}
+                          size={24}
+                          color={!!selecteds?.find(id => id === item?._id) ? colors.primary : colors.border}
+                          onPress={() => dispatch({type: 'select', payload: item?._id })}
+                        />}
+
+                        <ProductCard
+                          disabled={editMode}
+                          uri={item?.product?.uri}
+                          name={item?.product?.name}
+                          about={item?.comment}
+                          price={useProductPrice(item)}
+                          subPrice={useProductPrice(item, true)}
+                          count={item?.quantity}
+                          onChangeCount={quantity => onUpdate(item, quantity)}
+                          onContentPress={() => navigation.navigate('Product', { store, id: item?.product?._id })}
+                          onImagePress={() => navigation.navigate('Product', { store, id: item?.product?._id })}
+                        /> 
+
+                      </View>
+                    </TouchableOpacity>
+                    {item?.quantity > 0 &&
+                    <View style={{ paddingLeft: 30 }}>
+                      {item?.components.map(byItem => (
+                        <View style={{ paddingLeft: 20 }}>
+                          <MaterialIcons style={{ position: 'absolute', padding: 10 }}
+                            name={'subdirectory-arrow-right'} 
+                            size={24} color={colors.text} 
+                          />
+                          <ProductCard minimize 
+                            maxCount={byItem?.product?.spinOff ? 1 : 99}
+                            name={byItem?.product?.name}
+                            about={byItem?.components?.map((subItem,index) => 
+                              `+ (${subItem?.quantity}) ${subItem?.product?.name} ${(index !== byItem?.components?.length-1) ? '\n' : ''}`
+                            )?.reduce((acc, cur) => acc + cur, '')}
+                            price={useProductPrice(byItem)}
+                            subPrice={useProductPrice(byItem, true)}
+                            onContentPress={() => navigation.navigate('Product', { store, id: item?.product?._id })}
+                            onChangeCount={quantity => onUpdate({...item, 
+                              components: item?.components?.map(_item => 
+                                (_item?.product?._id !== byItem?.product?._id) ? _item 
+                                : { ..._item, quantity }
+                              ),
+                            }, item?.quantity)}
+                            count={byItem?.quantity}
+                          />
+                        </View> 
+                      ))}
+                    </View>}
+                  </View>
             )}
           />
-          {/* <SnackBar 
-            containerStyle={{ borderTopWidth: 1, borderColor: colors.border }}
-            messageColor={colors.text}
-            backgroundColor={colors.card}
-            ref={SnackBarRef}
-            position="bottom"
-            autoHidingTime={5000}
-            textMessage={actionItems?.map(i => `${i.quantity}x ${i.product?.name}`)?.join(', ')} 
-            onClose={() => setActionItems([])}
-            actionHandler={() => onBulkCreate(actionItems?.map(build_cart))} 
-            actionText="DESFAZER"
-            accentColor={colors.primary}
-          /> */}
+         
       </PullToRefreshView>
       
-      <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
+      {/* <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
         onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
       >
         <BlurView style={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} 
@@ -385,119 +547,8 @@ export default function Bag({
             onPress={() => navigation.navigate('Checkout', { store })}
           />
         </BlurView>
-      </View>
+      </View> */}
     </View>
-  )
-}
-
-
-interface CartProductProps {
-  product: ProductService.ProductData
-  quantity: number
-  comment: string
-  onPress?: () => any
-  onChangeQuantity?: (quantity: number) => any
-  selected?: boolean
-  editMode?: boolean
-}
-const CartProduct: React.FC<CartProductProps> = ({
-  product,
-  quantity: initialQuantity=1,
-  comment,
-  onChangeQuantity,
-  onPress,
-  editMode,
-  selected,
-}) => {
-  const { width } = useWindowDimensions()
-  const { colors } = useTheme()
-  const [quantity, setQuantity] = useState(initialQuantity)
-
-  useEffect(() => { setQuantity(initialQuantity) }, [initialQuantity])
-  
-  const onChangeValue = q => {
-    setQuantity(q)
-    useDebounceHandler(onChangeQuantity, 2000)(q)
-  }
-  // useEffect(useDebounceHandler(() => onUpdate(quantity), 2000), [quantity])
-  console.log(quantity, 'TTT', initialQuantity);
-  
-  return (
-      <View style={{ 
-        width, 
-        padding: 10,
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        backgroundColor: editMode && selected ? colors.card : colors.background,
-        borderBottomWidth: 1, borderColor: colors.border
-      }}>
-        {editMode && <IconButton 
-          name={selected ? 'check-circle-outline' : 'circle'}
-          size={24}
-          color={selected ? colors.primary : colors.border}
-          onPress={onPress}
-        />}
-          <View style={{ flex: 1 }}>
-            <TouchableOpacity onPress={onPress}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                <Image source={{ uri: product?.uri }} style={{ 
-                  margin: 10,
-                  height: 75, width: 75, 
-                  backgroundColor: colors.border, borderRadius: 4,
-                  borderWidth: 1, borderColor: colors.border
-                }}/>
-                <View style={{ flex: 1, alignItems: 'stretch', padding: 10 }}>
-                  <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{product?.name}</Text>
-                  <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .8 }}>{comment ? comment : product?.about}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                    {product?.promotions?.length > 0 && 
-                    <Text numberOfLines={1} style={{ marginRight: 5, color: colors.primary, fontSize: 14, fontWeight: '500', opacity: .8 }}>{
-                      MaskService.toMask('money', 
-                    (( product?.price - 
-                      (
-                        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-                        * product?.price
-                      )
-                    ) 
-                    * quantity) as unknown as string, {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                      })
-                    }</Text>}
-
-                    <Text numberOfLines={1} style={{ 
-                      textDecorationLine: product?.promotions?.length > 0 ? 'line-through' : 'none', 
-                      fontSize: 14, 
-                      color: colors.text, fontWeight: '500', opacity: .8 
-                    }}>{
-                      MaskService.toMask('money', (product?.price * quantity) as unknown as string, {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                      })
-                    }</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-        <View style={{ height: '100%' }}>
-          <View style={{ flex: 1 }}>
-            <InputCount
-              value={quantity}
-              onChangeValue={onChangeValue}
-              tintColor={colors.primary}
-            />
-          </View>
-        </View>
-      </View>
   )
 }
 

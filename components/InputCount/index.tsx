@@ -19,6 +19,7 @@ interface InputCountProps {
   decreaseIcon?: React.ComponentProps<typeof MaterialIcons>['name']
   increaseIcon?: React.ComponentProps<typeof MaterialIcons>['name']
   tintColor?: ColorValue
+  disabled?: boolean
 }
 
 const InputCount: React.FC<InputCountProps> = ({ 
@@ -32,6 +33,7 @@ const InputCount: React.FC<InputCountProps> = ({
   increaseIcon="add",
   tintColor,
   children,
+  disabled=false
 }) => {
   const { colors } = useTheme()
 
@@ -40,11 +42,11 @@ const InputCount: React.FC<InputCountProps> = ({
 
   const disableDecrease = (typeof minValue !== 'undefined' 
     ? value <= minValue : false
-  )
+  ) || disabled
 
   const disableIncrease = (typeof maxValue !== 'undefined' 
     ? value >= maxValue : false
-  )
+  ) || disabled
 
   const binarySwitch = (minValue === 0 && maxValue === 1)
 
@@ -52,8 +54,8 @@ const InputCount: React.FC<InputCountProps> = ({
     <Container style={{ flexDirection: vertical ? 'column-reverse' : 'row' }} >
       {<IconButton
         style={{ 
-          opacity: (binarySwitch) ? 0 : 1,
-          padding: (binarySwitch) ? 1.25 : 10
+          opacity: (binarySwitch || value === 0) ? 0 : 1,
+          padding: (binarySwitch || value === 0) ? 1.25 : 10
         }}
         name={decreaseIcon}
         color={colors.text}
@@ -64,24 +66,22 @@ const InputCount: React.FC<InputCountProps> = ({
 
 
       {(binarySwitch && !disableDecrease)  && <IconButton
-        // style={{ padding: 0 }}
-        name={decreaseIcon}
+        name={'close'}
         color={colors.text}
         size={24}
         disabled={disableDecrease}
         onPress={onDecrease}
       />}
 
-      {!binarySwitch && <View style={{ flexDirection: 'row' }}>
+      {(!binarySwitch && value !== 0)&& <View style={{ flexDirection: 'row' }}>
         {children}
         {!children && <Number style={{ color: tintColor ? tintColor : colors?.text, fontWeight: '500' }}>
           {value}
         </Number>}
       </View>}
 
-      {(binarySwitch && !disableIncrease) &&<IconButton 
-        // style={{ padding: 0 }}
-        name={increaseIcon}
+      {(binarySwitch && !disableIncrease || value === 0) &&<IconButton 
+        name={'add'}
         color={colors.text}
         size={24}
         disabled={disableIncrease}
@@ -90,8 +90,8 @@ const InputCount: React.FC<InputCountProps> = ({
       
       {<IconButton 
         style={{ 
-          opacity: (binarySwitch) ? 0 : 1,
-          padding: (binarySwitch) ? 1.25 : 10
+          opacity: (binarySwitch || value === 0) ? 0 : 1,
+          padding: (binarySwitch || value === 0) ? 1.25 : 10
         }}
         name={increaseIcon}
         color={colors.text}

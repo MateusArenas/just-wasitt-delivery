@@ -179,7 +179,7 @@ export default function Saved({
   return (
       <PullToRefreshView
         offset={top}
-        disabled={disabled}
+        disabled={editMode || disabled}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -191,6 +191,13 @@ export default function Saved({
             data={response?.data}
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             ItemSeparatorComponent={() => <View style={{ height: 1, width: '100%', backgroundColor: colors.border }}/>}
+            ListFooterComponentStyle={{ flex: 1 }}
+            ListFooterComponent={
+              <TouchableOpacity disabled={!editMode} 
+                onPress={() => setEditMode(false)} 
+                style={{ flex: 1 }}
+              />
+            }
             renderItem={({ item } : { item: SavedService.SavedData }) => (
               <CartBag 
                 editMode={editMode}

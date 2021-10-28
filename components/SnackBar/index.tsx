@@ -1,6 +1,11 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { View, StyleSheet, Animated, Easing, ViewStyle, TouchableNativeFeedback, TouchableOpacity, Text } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { ReactNode } from 'hoist-non-react-statics/node_modules/@types/react';
+import React, { useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { FlexStyle, View, StyleSheet, ViewStyle, TouchableNativeFeedback, TouchableOpacity, Text, LayoutChangeEvent, useWindowDimensions, ColorValue } from 'react-native';
 import { Platform } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation } from 'react-native-reanimated'
+import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const IS_ANDROID = Platform.OS === 'android';
 const IS_LT_LOLLIPOP = Platform.Version < 21;
@@ -13,17 +18,28 @@ export interface SnackbarComponentProps {
     backgroundColor?: string;
     distanceCallback?: (v: any) => void;
     actionHandler?: () => any;
+    onPress?: () => any;
+    actionHide?: boolean
     left?: number;
     right?: number;
-    bottom?: number;
+    bottom?: number | ((height: number) => number);
     top?: number;
     position?: 'top' | 'bottom' | 'right' | 'left';
     textMessage?: string;
+    textSubMessage?: string;
     autoHidingTime?: number;
     visible?: boolean;
     containerStyle?: ViewStyle
     messageStyle?: ViewStyle
     actionStyle?: ViewStyle
+    dark?: boolean
+    icon?: React.ComponentProps<typeof MaterialIcons>['name']
+    indicatorIcon?: boolean
+    iconColor?: ColorValue
+    textDirection?: FlexStyle['flexDirection'],
+    onClose?: () => any
+    onOpen?: () => any
+    onLayout?: (event: LayoutChangeEvent) => void
 }
 
 /* Values are from https://material.io/guidelines/motion/duration-easing.html#duration-easing-dynamic-durations */
@@ -37,154 +53,234 @@ const durationValues = {
   exit: 195,
 };
 
-const SnackBar: React.FC<SnackbarComponentProps & { onClose?: () => any }> = forwardRef(({
+const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   numberOfLines=1,
   accentColor= 'orange',
   messageColor= '#FFFFFF',
-  backgroundColor= '#484848',
+  backgroundColor= 'transparent',
   distanceCallback= null,
   actionHandler= null,
+  onPress=null,
+  actionHide=true,
   onClose= null,
+  onOpen=null,
   left= 0,
   right= 0,
   top= 0,
-  bottom= 0,
+  bottom: customBottom= 0,
   visible= false,
   position= 'bottom',
   actionText= '',
   textMessage= '',
+  textSubMessage= '',
   autoHidingTime= 0, // Default value will not auto hide the snack bar as the old version.
   containerStyle= {},
   messageStyle= {},
   actionStyle= {},
+  icon=undefined,
+  iconColor='white',
+  indicatorIcon=false,
+  textDirection='column',
+  dark=false,
+  onLayout,
 }, ref) => {
+  const [height, setHeight] = React.useState(0)
+  const bottom = typeof customBottom === 'function' ? customBottom(height) : customBottom
+  
   const pos = { top, bottom, right, left }
   const timerRef = useRef(null);
 
-  const [state, setState] = useState({
-    translateValue: new Animated.Value(0),
-    hideDistance: 9999,
-  })
+
+  const fadeAnimBottom = useSharedValue(bottom);
+  const translateValue = useSharedValue(0);
+
+  const [hideDistance, setHideDistance] = useState(999)
 
   useImperativeHandle(ref, () => ({
     open: openSnackbar,
     close: hideSnackbar
   }));
 
-  useEffect(() => {
-    if (visible) {
-      state.translateValue.setValue(1);
-    } else {
-      state.translateValue.setValue(0);
-    }
-  } ,[])
-
-  function openSnackbar () {
-    Animated.timing(state.translateValue, {
+  const openSnackbar = useCallback(() => {
+    cancelAnimation(translateValue)
+    translateValue.value = Animated.withTiming(1, {
       duration: durationValues.entry,
-      toValue: 1,
       easing: easingValues.entry,
-      useNativeDriver: false
-    }).start();
+    });
     if (autoHidingTime) {
       if (timerRef.current) clearTimeout(timerRef.current)
       const hideFunc = hideSnackbar.bind(this);
       timerRef.current = setTimeout(hideFunc, autoHidingTime);
     }
-  }
+    onOpen && onOpen()
+  }, [timerRef])
 
   useEffect( () => {
     if (visible) {
       openSnackbar()
-    } else if (!visible) {
+    } else {
       hideSnackbar();
     }
   }, [visible, autoHidingTime])
 
+  const hideSnackbar = useCallback(() => {
+    cancelAnimation(translateValue)
+    translateValue.value = Animated.withTiming(0, {
+      duration: durationValues.exit,
+      easing: easingValues.exit,
+    })
+    onClose && onClose()
+  }, [])
+
   useEffect( () => {
     if (distanceCallback !== null) {
       if (visible) {
-        distanceCallback(state.hideDistance + pos[position]);
+        distanceCallback(hideDistance + pos[position]);
       } else {
         distanceCallback(pos[position]);
       }
     }
-  }, [visible, state.hideDistance])
+  }, [distanceCallback, visible, hideDistance])
+
+  useEffect(() => {
+    fadeAnimBottom.value = Animated.withTiming(bottom,{
+        duration: durationValues.entry,
+        easing: easingValues.entry,
+      }
+    )
+  }, [bottom])
 
 
-  function hideSnackbar() {
-    if(onClose) onClose()
-    Animated.timing(state.translateValue, {
-      duration: durationValues.exit,
-      toValue: 0,
-      easing: easingValues.exit,
-      useNativeDriver: false
-    }).start();
-  }
+  const containerAnimStyle = useAnimatedStyle(() => {
+    return { 
+      height: Animated.interpolate(translateValue?.value, 
+        [0, 1],
+        [0, hideDistance],
+      ),
+      bottom: fadeAnimBottom?.value,
+    }
+  })
+
+  const componentAnimStyle = useAnimatedStyle(() => {
+    switch (position) {
+      case 'bottom':
+        return { 
+          bottom: Animated.interpolate(translateValue?.value,
+            [0, 1],
+            [hideDistance * -1, 0],
+          )
+         }
+      case 'top':
+        return { 
+          top: Animated.interpolate(translateValue?.value,
+            [0, 1],
+            [hideDistance * -1, 0],
+          )
+        }
+      default:
+        return {}
+    }
+  })
 
 return (
-      <Animated.View
+      <Animated.View onLayout={e => {
+        onLayout && onLayout(e);
+        setHeight(e?.nativeEvent?.layout?.height)
+      }}
         style={[
           styles.limitContainer,
-          {
-            height: state.translateValue.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, state.hideDistance],
-            }),
-          },
+          containerAnimStyle,
           position === 'top'
-            ? { top: top }
-            : { bottom: bottom },
+            ? { top }
+            : {  }, /// bottom
         ]}
       >
-        <Animated.View
-          style={[
-            containerStyle,
-            styles.container,
-            {
-              backgroundColor: backgroundColor,
-              left: left,
-              right: right,
-            },
-            {
-              [position]: state.translateValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [state.hideDistance * -1, 0],
-              }),
-            },
-          ]}
-          onLayout={event => setState(state => ({...state, hideDistance: event?.nativeEvent?.layout?.height }))}
-        >
-          {(
-              <Text
-                numberOfLines={numberOfLines}
-                style={[
-                  messageStyle,
-                  styles.textMessage,
-                  { color: messageColor},
-                ]}
-              >
-                {textMessage}
-              </Text>
-            )
-          }
-          {actionHandler !== null && !!actionText
-            ? (
-              <Touchable onPress={actionHandler}>
-                <Text
-                  style={[
-                    actionStyle,
-                    styles.actionText,
-                    { color: accentColor },
-                  ]}
-                >
-                  {actionText.toUpperCase()}
-                </Text>
-              </Touchable>
-            )
-            : null
-          }
-        </Animated.View>
+          <Animated.View
+            style={[
+              containerStyle,
+              styles.container,
+              {
+                backgroundColor,
+                left,
+                right,
+              },
+              componentAnimStyle,
+            ]}
+            onLayout={({ nativeEvent: { layout: { height } } }) => 
+              setHideDistance(height ? (height): bottom)
+            }
+          >
+            <BlurView style={[{ borderRadius: 4, overflow: 'hidden', width: '100%' }]} 
+              intensity={100} tint={dark ? 'dark' : 'light'}
+            >
+        <TouchableOpacity disabled={!onPress} onPress={onPress}>
+              <View style={[styles.innerContainer]}>
+                
+              {!!icon && <MaterialIcons style={{ padding: 10, paddingRight: 0 }} 
+                name={icon} 
+                color={iconColor} 
+                size={24} 
+              />}
+                {(
+                  <View style={[
+                    { flex: 1, padding: 10 },
+                    { flexDirection: textDirection }
+                  ]}>
+                    <Text
+                      numberOfLines={numberOfLines}
+                      style={[
+                        messageStyle,
+                        styles.textMessage,
+                        { color: messageColor},
+                      ]}
+                    >
+                      {textMessage}
+                    </Text>
+                    {!!textSubMessage && <Text
+                      numberOfLines={numberOfLines}
+                      style={[
+                        messageStyle,
+                        styles.textMessage,
+                        { color: messageColor, opacity: .8 },
+                      ]}
+                    >
+                      {textSubMessage}
+                    </Text>}
+                  </View>
+                  )
+                }
+                {!!actionText ? (
+                    <Touchable onPress={() => {
+                      actionHandler && actionHandler()
+                      actionHide && hideSnackbar()
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text
+                          style={[
+                            actionStyle,
+                            styles.actionText,
+                            { color: accentColor },
+                            indicatorIcon ? { paddingEnd: 0 } : {}
+                          ]}
+                        >
+                          {actionText.toUpperCase()}
+                        </Text>
+                        { indicatorIcon &&
+                          <MaterialIcons style={{ padding: 10, paddingLeft: 0 }} 
+                            name={'chevron-right'} 
+                            color={accentColor} 
+                            size={24} 
+                          />
+                        }
+                      </View>
+                    </Touchable>
+                  )
+                  : null
+                }
+              </View>
+              </TouchableOpacity>
+            </BlurView>
+          </Animated.View>
       </Animated.View>
     );
 })
@@ -198,24 +294,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     left: 0,
     right: 0,
-    zIndex: 9999,
-    backgroundColor: 'rgba(0, 0, 0, 0)',
+    zIndex: 555,
   },
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     position: 'absolute',
+    padding: '5%',
+  },
+  innerContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 49,
   },
   textMessage: {
     fontWeight: '500',
-    fontSize: 14,
-    flex: 1,
-    textAlign: 'left',
-    paddingStart: 20,
-    paddingEnd: 20,
-    paddingTop: 14,
-    paddingBottom: 14,
+    fontSize: 16,
+    // flex: 1,
+    // textAlign: 'left',
+    // alignSelf: 'center',
+    // paddingStart: 20,
+    // paddingEnd: 20,
+    // paddingTop: 14,
+    // paddingBottom: 14,
   },
   actionText: {
     fontSize: 14,

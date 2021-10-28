@@ -24,6 +24,7 @@ import BottomHalfModalContext from '../../contexts/BottomHalfModal';
 import CardLink from '../../components/CardLink';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { MaskService } from 'react-native-masked-text';
+import useProductPrice from '../../hooks/useProductPrice';
 // import { Container } from './styles';
 
 export default function Cart({ 
@@ -50,7 +51,7 @@ export default function Cart({
     onService, 
     onRefresh 
   } = useLoadScreen<BagService.bagData>(React.useCallback(async () => await BagService.index({ userId: user?._id }), [user]))
-  useEffect(() => { onLoading() }, [user])
+  useFocusEffect(useCallback(() => { onLoading() }, [user]))
 
   useScrollToTop(ref)
 
@@ -223,76 +224,78 @@ export default function Cart({
 
   return (
     <View style={{ flex: 1 }}>
-      <PullToRefreshView
-        offset={top}
-        disabled={editMode || disabled}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        style={{ flex: 1, backgroundColor: colors.background }}
-      >
-        <FlatList style={{ flex: 1 }} ref={ref}
-          ListEmptyComponent={
-            loading ? <Loading /> :
-            response?.data?.length === 0 && <View style={{ 
-              flex: 1, alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Text style={{ 
-                textAlign: 'center', textAlignVertical: 'center',
-                fontSize: 18, 
-                color: colors.text, opacity: .5,
-              }}>{'Nenhum resultado'}</Text>
-            </View>
-          }
-          contentContainerStyle={{ flexGrow: 1, paddingTop: top, paddingBottom: bottom }}
-          scrollIndicatorInsets={{ top, bottom }}
-          ListHeaderComponentStyle={{ width: '100%' }}
-          ListHeaderComponent={
-            <View style={{ 
-              padding: 10,
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              borderBottomWidth: 1, borderColor: colors.border
-            }}>
-              <TextButton 
-                label={'Lista de salvos'}
-                color={colors.primary}
-                fontSize={16}
-                onPress={() => navigation.navigate('Saved')}
+        <PullToRefreshView
+          offset={top}
+          disabled={editMode || disabled}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          style={{ flex: 1, backgroundColor: colors.background }}
+        >
+          <FlatList style={{ flex: 1 }} ref={ref}
+            ListEmptyComponent={
+              loading ? <Loading /> :
+              response?.data?.length === 0 && <View style={{ 
+                flex: 1, alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Text style={{ 
+                  textAlign: 'center', textAlignVertical: 'center',
+                  fontSize: 18, 
+                  color: colors.text, opacity: .5,
+                }}>{'Nenhum resultado'}</Text>
+              </View>
+            }
+            contentContainerStyle={[
+              { flexGrow: 1, backgroundColor: colors.card }, 
+              { marginTop: top, paddingBottom: bottom }
+            ]}
+            scrollIndicatorInsets={{ top, bottom }}
+            ListHeaderComponentStyle={{ width: '100%' }}
+            ListHeaderComponent={
+              <View style={{ 
+                padding: 10,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <TextButton 
+                  label={'Lista de salvos'}
+                  color={colors.text}
+                  fontSize={16}
+                  onPress={() => navigation.navigate('Saved')}
+                />
+                <TextButton 
+                  label={'Lista de favoritos'}
+                  color={colors.text}
+                  fontSize={16}
+                  onPress={() => navigation.navigate('Favorite')}
+                />
+              </View>
+            } 
+            onScroll={onScroll}
+            // contentContainerStyle={{ borderTopWidth: 1, borderColor: colors.border }}
+            ListFooterComponentStyle={{ flex: 1 }}
+            ListFooterComponent={
+              <TouchableOpacity disabled={!editMode} 
+                onPress={() => setEditMode(false)} 
+                style={{ flex: 1 }}
               />
-              <TextButton 
-                label={'Lista de favoritos'}
-                color={colors.primary}
-                fontSize={16}
-                onPress={() => navigation.navigate('Favorite')}
-              />
-            </View>
-          } 
-          onScroll={onScroll}
-          // contentContainerStyle={{ borderTopWidth: 1, borderColor: colors.border }}
-          data={response?.data}
-          keyExtractor={(item, index) => `${item?._id}-${index}`}
-          renderItem={({ item } : { item: BagService.bagData }) => (
-            <CartBag 
-                editMode={editMode}
-                selected={(!!selecteds?.find(id => id === item?.store?.name) && editMode)}
-                onPress={() => editMode ? onSelected(item?.store?.name) 
-                  : navigation.navigate('Bag', { store: item?.store?.name })
-                }
-                uri={item?.store?.uri}
-                name={item?.store?.name}
-                items={item?.bundles?.map(i => ({ uri: i?.product?.uri, quantity: i?.quantity }))}
-                price={item?.bundles?.map(item => 
-                  ( item?.product?.price - 
-                    (
-                      (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
-                      * item?.product?.price
-                    )
-                  ) * item?.quantity
-                )?.reduce((accum, curr) => accum + curr, 0)}
-              /> 
-          )}
-        />
-      </PullToRefreshView>
-      
+            }
+            data={response?.data}
+            keyExtractor={(item, index) => `${item?._id}-${index}`}
+            renderItem={({ item } : { item: BagService.bagData }) => (
+              <CartBag 
+                  editMode={editMode}
+                  selected={(!!selecteds?.find(id => id === item?.store?.name) && editMode)}
+                  onPress={() => editMode ? onSelected(item?.store?.name) 
+                    : navigation.navigate('Bag', { store: item?.store?.name })
+                  }
+                  uri={item?.store?.uri}
+                  name={item?.store?.name}
+                  items={item?.bundles?.map(i => ({ uri: i?.product?.uri, quantity: i?.quantity }))}
+                  price={item?.bundles?.map(item => useProductPrice(item) * item?.quantity)?.reduce((accum, curr) => accum + curr, 0)}
+                  subPrice={item?.bundles?.map(item => useProductPrice(item, true) * item?.quantity)?.reduce((accum, curr) => accum + curr, 0)}
+                /> 
+            )}
+          />
+        </PullToRefreshView>      
     </View>
   )
 }
@@ -332,8 +335,7 @@ const CartBag: React.FC<CartProductProps> = ({
         flexDirection: 'row', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        backgroundColor: selected ? colors.card : colors.background,
-        borderBottomWidth: 1, borderColor: colors.border,
+        backgroundColor: selected ? colors.border : 'transparent',
       }}>
           <View style={{ flex: 1 }}>
             <TouchableOpacity onPress={onPress} onLongPress={onLongPress}>
@@ -356,7 +358,7 @@ const CartBag: React.FC<CartProductProps> = ({
                   </View>
                 }
                 <View style={{ flex: 1, padding: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Image style={{ height: 75, width: 75, backgroundColor: colors.border, borderRadius: 60, borderWidth: 1, borderColor: colors.border }} source={{ uri }} />
+                  <Image style={{ height: 75, width: 75, backgroundColor: colors.border, borderRadius: 60 }} source={{ uri }} />
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
                     <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{name}</Text>
                     {about && <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: '500', opacity: .5 }}>{about}</Text>}
@@ -374,25 +376,23 @@ const CartBag: React.FC<CartProductProps> = ({
                       {items.slice(0, numberOfItems).map(item => (
                         <View style={{ position: 'relative' }}>
                           <Image 
-                            style={{ margin: 2, height: 38, width: 38, backgroundColor: colors.border, borderRadius: 4, borderWidth: 1, borderColor: colors.border }} 
+                            style={{ margin: 2, height: 38, width: 38, backgroundColor: colors.border, borderRadius: 4 }} 
                             source={{ uri: item?.uri }} 
                           />
                           <View style={{ 
                             position: 'absolute', left: -2, bottom: -2, 
                             width: 20, height: 20, 
-                            backgroundColor: colors.card,
                             borderRadius: 20, 
-                            borderWidth: 1, borderColor: colors.primary,
                           }}>
                             <View style={{ 
                               flex: 1,
                               borderRadius: 20, 
-                              backgroundColor: selected ? colors.border : colors.card, 
+                              backgroundColor: colors.notification, 
                               alignItems: 'center', justifyContent: 'center', 
                              }}>
                               <Text numberOfLines={1} style={{ 
                                 alignSelf: 'center', textAlign: 'center',
-                                color: colors.primary, fontSize: 12, fontWeight: 'bold' 
+                                color: 'white', fontSize: 12, fontWeight: '500' 
                               }}>{item?.quantity}</Text>
                             </View>
                           </View>

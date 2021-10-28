@@ -3,6 +3,7 @@ import { bundleData } from './bundle'
 import * as LocalStorage from './local'
 import * as ProductService from './product'
 import * as StoreService from './store'
+import * as BundleService from './bundle'
 import { StoreDate } from './store'
 
 interface errorData { error: string }
@@ -13,7 +14,7 @@ export interface bagData {
   bundles: Array<bundleData>
 }
 
-const VERSION = '3.2'
+const VERSION = '4.7'
 
 export async function index ({ userId } : { userId: string }) : Promise<AxiosResponse<Array<bagData>>> {
   try {
@@ -22,10 +23,26 @@ export async function index ({ userId } : { userId: string }) : Promise<AxiosRes
     const data = await Promise.all(localData?.map(async item => {
       const { data: store } = await StoreService.search({ id: item?.store })
 
-      const bundles = await Promise.all(item?.bundles?.map(async bundle => {
-        const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
-        return ({ ...bundle, product })
-      }))
+      const bundles = await BundleService?.index({ store: store?.name, userId })
+
+      // const bundles = await Promise.all(item?.bundles?.map(async bundle => {
+        // const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+        
+        // const components = bundle?.components?.map(component => {
+        //   const byProduct = product?.products?.find(item => item?._id === component?.product)
+        //   const components = byProduct?.products?.map(subItem => ({
+        //     ...subItem,
+        //     product: byProduct?.products?.find(item => item?._id === subItem?.product)
+        //   }))
+        //   return ({
+        //     ...component,
+        //     product: byProduct,
+        //     components
+        //   })
+        // })
+  
+        // return ({ ...bundle, product, components })
+      // }))
 
       return ({ ...item, store, bundles })
     }))
@@ -41,11 +58,31 @@ export async function search ({ id, userId } : { id: string, userId: string }) :
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, id)
     
     const { data: store } = await StoreService.search({ id: localData?.store })
+    
+    console.log('yuyu, bagz', localData);
+    const bundles = await BundleService.index({ store: store?.name, userId })
 
-    const bundles = await Promise.all(localData?.bundles?.map(async bundle => {
-      const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
-      return ({ ...bundle, product })
-    }))
+    console.log('yuyu, bag', { ...localData, store, bundles });
+    
+
+    // const bundles = await Promise.all(localData?.bundles?.map(async (bundle: bundleData) => {
+    //   const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+
+    //   const components = bundle?.components?.map(component => {
+    //     const byProduct = product?.products?.find(item => item?._id === component?.product)
+    //     const components = byProduct?.products?.map(subItem => ({
+    //       ...subItem,
+    //       product: byProduct?.products?.find(item => item?._id === subItem?.product)
+    //     }))
+    //     return ({
+    //       ...component,
+    //       product: byProduct,
+    //       components
+    //     })
+    //   })
+
+    //   return ({ ...bundle, product, components })
+    // }))
 
     return Promise.resolve({ ...localData, store, bundles })
   } catch(err) { 

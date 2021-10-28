@@ -1,7 +1,7 @@
 import { DefaultTheme, DarkTheme } from "@react-navigation/native";
 
 const primary = '#2f95dc';
-const notification = 'red';
+const notification = '#b90924';
 
 interface themeProps {
   light: typeof DefaultTheme

@@ -4,27 +4,38 @@ import * as ProductService from './product'
 import * as StoreService from './store'
 import { StoreDate } from './store'
 
+export interface componentData {
+  components?: Array<componentData>
+  product: ProductService.ProductData & any
+  quantity: number
+}
+
 interface errorData { error: string }
 export interface bundleData { 
   _id: string
-  store: string & StoreDate
+  store: StoreDate & string
   user: any
   product: ProductService.ProductData & any
+  components: Array<componentData>
   quantity: number
   comment?: string
 }
 
-const VERSION = '3.2'
+const VERSION = '4.7'
 
 export async function index ({ store: storeName, userId } : { store: string, userId: string }) : Promise<AxiosResponse<Array<bundleData>>> {
   try {
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, storeName)
 
-    const data = await Promise.all(localData?.bundles?.map(async bundle => {
-      const { data: store } = await StoreService.search({ id: bundle?.store })
-      const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
-      return ({ ...bundle, store, product })
-    }))
+    // const data = await Promise.all(localData?.bundles?.map(async bundle => {
+    //   const { data: store } = await StoreService.search({ id: bundle?.store })
+    //   const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+    //   return ({ ...bundle, store, product })
+    // }))
+
+    const data = await Promise.all(localData?.bundles?.map(async bundle => 
+      await search({ store: storeName, id: bundle?._id, userId })
+    ))
     
     return Promise.resolve(data as any)
   } catch(err) { 
@@ -36,12 +47,54 @@ export async function search ({ store: storeName, id, userId } : { store: string
   try {
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, storeName)
 
-    const bundle = localData?.bundles?.find(item => item?._id === id)
+    const bundle = localData?.bundles?.find(item => item?._id === id) as bundleData
 
-    const { data: store } = await StoreService.search({ id: localData?.store })
-    const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+    console.log('estagio 2', bundle?.components);
+    
+    const { data: _store } = await StoreService.search({ id: localData?.store })
+    const store = (_store as unknown as  StoreDate)
+    // console.log('yuyu, bag', localData, bundle, id);
+    const { data: _product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+    const product = (_product as unknown as  ProductService.ProductData)
 
-    return Promise.resolve({ ...bundle, store, product })
+    console.log('bum', localData?.bundles);
+    
+    const components = bundle?.components?.map(component => {
+      const byProduct = product?.products?.find(item => item?._id === component?.product)
+      const components = component?.components?.map(item => ({
+        ...item,
+        product: byProduct?.products?.find(subProduct => subProduct?._id === item?.product)
+      }))
+       return ({
+         ...component,
+         product: byProduct,
+        components,
+       })
+    })
+
+    // const components = await Promise.all(localData?.bundles?.map(async (bundle: bundleData) => {
+    //   const { data: product } = await ProductService.search({ store: store?.name, id: bundle?.product })
+
+    //   const components = bundle?.components?.map(component => {
+    //     const byProduct = product?.products?.find(item => item?._id === component?.product)
+    //     const components = byProduct?.products?.map(subItem => ({
+    //       ...subItem,
+    //       product: byProduct?.products?.find(item => item?._id === subItem?.product)
+    //     }))
+    //     return ({
+    //       ...component,
+    //       product: byProduct,
+    //       components
+    //     })
+    //   })
+
+    //   return ({ ...bundle, product, components })
+    // }))
+
+    console.log('yuyu, bundle', { ...bundle, store, product, components });
+
+
+    return Promise.resolve({ ...bundle, store, product, components })
   } catch(err) { 
     return Promise.reject(err)
   } 
@@ -49,9 +102,12 @@ export async function search ({ store: storeName, id, userId } : { store: string
 
 export async function create ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
   try {
+    console.log('estagio');
     const key = `/${VERSION}/${userId}/bag/stores`
     const localData = await LocalStorage.find(key, storeName)
 
+    console.log('estagio 1', body);
+    
     if (localData) {
       await LocalStorage.update(key, ({ ...localData, bundles: [...localData?.bundles, body] }))
     } else {
@@ -67,6 +123,9 @@ export async function create ({ store: storeName, userId, body } : { store: stri
 export async function update ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
   try {
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, storeName)
+
+    console.log('estagio 1 -- up', body);
+
 
     if(localData) {
       const bundle = localData?.bundles?.find(item => item?._id === body?._id)

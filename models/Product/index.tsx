@@ -9,6 +9,7 @@ import { MaskService } from 'react-native-masked-text';
 import * as FavoriteService from '../../services/favorite'
 import AuthContext from '../../contexts/auth';
 import { BlurView } from 'expo-blur';
+import { useProductValue } from '../../hooks/useProductPrice';
 
 interface ProductProps {
   store: string
@@ -79,13 +80,11 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
                   onPress={favorite ? onRemove : onSave}
                 />
               </View>
-              {!!data?.about && <Text style={[styles.describe, { color: colors.text, flex: 1 }]} numberOfLines={horizontal ? 1 : 99}>{data?.about}</Text>}
+              <Text style={[styles.describe, { color: colors.text, flex: 1 }]} numberOfLines={horizontal ? 1 : 99}>{data?.about ? data?.about : ' '}</Text>
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end' }}>
                 {data?.promotions?.length > 0 && <Text style={[styles.subTitle, { fontSize: 16, color: colors.text, marginRight: 10 }]} numberOfLines={1}>{
                   MaskService.toMask('money', 
-                  (
-                    data?.price - (data?.price * (Math.max(...data?.promotions?.map(item => item?.percent), 0) / 100))
-                  ) as unknown as string, 
+                  useProductValue(data) as unknown as string, 
                   {
                     precision: 2,
                     separator: ',',

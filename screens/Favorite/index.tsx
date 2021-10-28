@@ -177,7 +177,7 @@ export default function Favorite({
   return (
       <PullToRefreshView
         offset={top}
-        disabled={disabled}
+        disabled={editMode || disabled}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -187,6 +187,13 @@ export default function Favorite({
             contentContainerStyle={{ paddingTop: top, paddingBottom: bottom }}
             scrollIndicatorInsets={{ top, bottom }}
             data={data}
+            ListFooterComponentStyle={{ flex: 1 }}
+            ListFooterComponent={
+              <TouchableOpacity disabled={!editMode} 
+                onPress={() => setEditMode(false)} 
+                style={{ flex: 1 }}
+              />
+            }
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             ItemSeparatorComponent={() => <View style={{ height: 1, width: '100%', backgroundColor: colors.border }}/>}
             renderItem={({ item } : { item: FavoriteService.FavoriteData }) => (

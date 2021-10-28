@@ -1,13 +1,13 @@
 import { HeaderTitle, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState, useReducer } from 'react';
 import Loading from '../../components/Loading';
 import NotFound from '../../components/NotFound';
 import Refresh from '../../components/Refresh';
 import { useThemeColor } from '../../components/Themed';
 import * as ProductService from '../../services/product';
 import { RootStackParamList } from '../../types'; 
-import * as Cart from '../../services/cart'
 import * as BundleService from '../../services/bundle'
+import * as BagService from '../../services/bag'
 import useService from '../../hooks/useService';
 import useUri from '../../hooks/useUri';
 import ProductModel from '../../models/Product';
@@ -31,6 +31,28 @@ import { useScrollToTop } from '@react-navigation/native';
 import { MaskService } from 'react-native-masked-text';
 import { BlurView } from 'expo-blur';
 import { useDebounceHandler } from '../../hooks/useDebounce';
+import useProductPrice, { useProductAdditionals, useProductValue } from '../../hooks/useProductPrice';
+import ProductCard from '../../components/ProductCard';
+import useLoadScreen from '../../hooks/useLoadScreen';
+import SnackBarContext from '../../contexts/snackbar';
+
+
+const initialState = { 
+  quantity: 1, 
+  comment: '', 
+  components: []
+};
+
+function reducer(state: Partial<BundleService.bundleData>, action) {
+  switch (action.type) {
+    case 'init':
+      return { ...state, ...action?.payload };
+    // case 'quantity':
+    //   return { count: state.count - 1 };
+    default:
+      throw new Error();
+  }
+}
 
 function Product({ 
   navigation,
@@ -40,14 +62,16 @@ function Product({
   const bottom = useContext(BottomTabBarHeightContext) || 0
   const [extraBottom, setExtraBottom] = React.useState(0)
 
+  const [state, dispatch] = useReducer(reducer, initialState);
+
   const [height, setHeight] = React.useState<number>(0)
   const ref = React.useRef<ScrollView>(null);
   const { user } = useContext(AuthContext)
   const BottomHalfModal = useContext(BottomHalfModalContext)
   const { colors, dark } = useTheme()
-  const [state, setState] = useState<Cart.cartData>({ quantity: 1, components: [] } as Cart.cartData)
-  const [comment, setComment] = useState<string>('')
-  const [quantity, setQuantity] = useState<number>(1)
+
+  const [up, setUp] = useState(false)
+
   const { store, id } = route.params
 
   useScrollToTop(ref);
@@ -62,48 +86,7 @@ function Product({
 
   const data = response?.data[0]
 
-
-  const subTotalPrice = state?.components?.length > 0 ? 
-    state?.components?.map(({ product: _id, quantity }) => {  
-      const product = data?.products?.find(item => item?._id === _id)
-      return ( product?.price - 
-        (
-          (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-          * product?.price
-        )
-      ) * quantity
-    })?.reduce((acc, cur) => acc + cur, 0)
-  : data?.price
-
-  const totalPrice = subTotalPrice > data?.price ? subTotalPrice : data?.price
-
-
-  const additionals = state?.components?.length > 0 ?
-   state?.components?.map(({ product: _id, quantity }) => {  
-    const product = data?.products?.find(item => item?._id === _id)
-    return ( product?.price - 
-      (
-        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-        * product?.price
-      )
-    ) * quantity
-  })?.reduce((acc, cur) => acc + cur, 0)
-  : 0
-
-  const valor = data?.promotions?.length > 0 ? (data?.price - (
-    (Math.max(...data?.promotions?.map(item => item?.percent), 0) / 100 )
-    * data?.price
-  )) : data?.price
-
-  const teto = (
-    (data?.offset / 100 )
-    * valor
-  )
-
-  const total = data?.single ? valor+additionals 
-  : additionals <= (valor+teto) ? valor
-  : valor+(additionals-(valor+teto))
-
+  
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       title: store,
@@ -122,7 +105,7 @@ function Product({
                     {[
                       { key: 0, icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => navigation.navigate('MakeProduct', { store, id })},
                       { key: 1, icon: 'link', color: colors.text, title: 'Link', onPress: () => navigation.navigate('MakeProduct', { store, id })},
-                      { key: 2, icon: 'sim-card-alert', color: 'red', title: 'Denunciar', onPress: () => {} },
+                      { key: 2, icon: 'sim-card-alert', color: colors.notification, title: 'Denunciar', onPress: () => {} },
                     ].map(item => (
                       <View style={{ 
                         padding: 10, paddingTop: 0,
@@ -148,7 +131,7 @@ function Product({
                   data?.self ? [
                     { key: 0, icon: 'add-circle-outline', color: colors.primary, title: 'Criar', onPress: () => navigation.navigate('MakeProduct', { store })},
                     { key: 1, icon: 'edit', color: colors.text, title: 'Editar', onPress: () => navigation.navigate('MakeProduct', { store, id })},
-                    { key: 2, icon: 'delete', color: 'red', title: 'Remover', onPress: async function onRemove () {
+                    { key: 2, icon: 'delete', color: colors.notification, title: 'Remover', onPress: async function onRemove () {
                       try {
                         await ProductService.remove({ store, id })
                         navigation.replace('Store', { store })
@@ -218,18 +201,71 @@ function Product({
     });
   }, [data]))
 
+
+  const BundleResponse = useService<BundleService.bundleData>(BundleService, 
+    'search', { store, userId: user?._id, id: data?._id }
+  , [user, data])
+ 
+  const BagResponse = useService<BagService.bagData>(BagService)
+
+  useFocusEffect(useCallback(() => { 
+    BagResponse?.onService('search', { id: store, userId: user?._id }) 
+  }, [user]))
+
+  useEffect(() => { 
+    BagResponse?.onService('search', { id: store, userId: user?._id }) 
+  }, [up, user])
+
+  const totalPrice = BagResponse?.response?.data[0]?.bundles?.map(bundle => {
+    return useProductPrice(bundle) * bundle?.quantity
+  })?.reduce((acc, cur) => acc + cur, 0) 
+  const totalQuantity = BagResponse?.response?.data[0]?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
+
+
+  const local = BundleResponse?.response?.data[0]
+
   useEffect(() => {
     (async () => {
       try {
         if (data) {
-          const cartProduct = await BundleService.search({ store, userId: user?._id, id: data?._id })
-          setState(state => ({...state, ...cartProduct }))
-          setQuantity(cartProduct.quantity)
-          setComment(cartProduct.comment)
+          // load initial
+          dispatch({ type: 'init', payload: {
+            ...state, 
+            product: id,
+            store: data?.store?._id,
+            user: user?._id,
+            quantity: 1, comment: '',
+            components: data?.products?.map(item => ({
+              quantity: 0,
+              product: item?._id,
+              components: item?.products?.map(subItem => ({
+                quantity: 0,
+                product: subItem?._id,
+              }))
+            }))
+          } })
+          //load cart
+          console.log(local?._id, 'yyy');
+
+          if (local) {
+            dispatch({ type: 'init', payload: {
+              ...state, 
+              ...local,
+              components: local?.components?.map(item => ({
+                ...item,
+                product: item?.product?._id,
+                components: item?.components?.map(subItem => ({
+                  ...subItem,
+                  product: subItem?.product?._id,
+                }))
+              }))
+            } })
+          }
+          
         }
       } catch (err) {}
     })()
-  } ,[data, setState, setQuantity, setComment])
+  } ,[user, data, dispatch, local])
 
   const saveToCart = async ({ quantity, comment }) => {
     try {
@@ -239,20 +275,22 @@ function Product({
         store: data?.store?._id,
         product: id, 
         user: user?._id, 
+        components: state?.components,
         quantity, 
         comment,
       } })
-      setState(state => ({ ...state, quantity, comment }))
-      navigation.replace('Store', { store })
+      setUp(false)
+      dispatch({ type: 'init', payload: { ...state, quantity, comment } })
+      // navigation.replace('Store', { store })
     } catch (err) {}
   }
 
   const onRemove = async () => {
     if (data?._id) await BundleService.remove({ store, id: data?._id, userId: user?._id })
-    navigation.replace('Store', { store })
+    // navigation.replace('Store', { store })
   }
 
-  const onUpdate = useCallback(async ({ quantity, comment }) => {
+  const onUpdate = async ({ quantity, comment }) => {
     try {
       console.log('uppp', { quantity, comment });
       await BundleService.update({ store, userId: user?._id, body: { 
@@ -260,58 +298,81 @@ function Product({
         store: data?.store?._id,
         product: id, 
         user: user?._id, 
+        components: state?.components,
         quantity, 
         comment,
       } })
-      setState(state => ({ ...state, quantity, comment }))
+      setUp(false)
+      // setState(state => ({ ...state, quantity, comment }))
+      dispatch({ type: 'init', payload: { ...state, quantity, comment } })
     } catch (err) {}
-  }, [data, setState])
-
-
-  function handleProducts ({ product, quantity }) {
-    const find = state?.components?.find(item => item?.product === product)
-    if (find) {
-      setState({ ...state, 
-        components: [
-          ...state?.components?.filter(item => item?.product !== product), 
-          { ...find,  quantity }
-        ] 
-      })
-    } else {
-      setState({ ...state, 
-        components: [
-          ...state?.components, 
-          { product, quantity, components: [] }
-        ] 
-      })
-    }
   }
 
-  function handleSubProducts ({ id, product, quantity }) {
-    const parent = state?.components?.find(item => item?.product === id)
-    const find = parent?.components?.find(item => item?.product === product)
-    if (find) {
-      setState({ ...state, 
-        components: [
-          ...state?.components?.filter(item => item?.product !== id), 
-          {...parent, components: [
-            ...parent?.components?.filter(item => item?.product !== product),
-            {...find, product, quantity }
-          ] }
-        ] 
-      })
-    } else {
-      setState({ ...state, 
-        components: [
-          ...state?.components?.filter(item => item?.product !== id), 
-          {...parent, components: [
-            ...parent?.components,
-            { product, quantity, components: [] }
-          ] }
-        ] 
-      })
-    }
+  const bundle = {
+    ...state,
+    product: data,
+    components: state?.components?.map(byItem => ({
+      ...byItem,
+      product: data?.products?.find(item => item?._id === byItem?.product),
+      components: byItem?.components?.map(subItem => ({
+        ...subItem,
+        product: data?.products?.find(item => item?._id === byItem?.product)
+          ?.products?.find(item => item?._id === subItem?.product)
+      })) 
+    }))
   }
+
+  const additionals = useProductAdditionals(bundle)
+  const value = useProductValue(bundle?.product)
+  const total = useProductPrice(bundle) * bundle?.quantity
+
+  function handleComment (comment) {
+    setUp(local?.comment !== comment)
+    dispatch({ type: 'init', payload: { comment } })
+  }
+
+  function handleQuantity (quantity) {
+    setUp(local?.quantity !== quantity)
+    dispatch({ type: 'init', payload: { quantity } })
+  }
+
+  function handleAddQuantity (id: string, body: Partial<BundleService.componentData>) {
+    setUp(true)
+
+    dispatch({ type: 'init', payload: { ...state, components: [
+        ...state?.components?.map(item => 
+          item?.product !== id ? item : { ...item, ...body }
+        )
+      ] 
+    } })
+  }
+
+  const Snackbar = useContext(SnackBarContext)
+
+  useFocusEffect(useCallback(() => {
+    Snackbar?.show({
+      onPress: () => navigation.navigate('Bag', { store }),
+      messageColor: colors.text,
+      position: "bottom",
+      bottom: (bottom + (extraBottom/2) + 20),
+      icon: 'shopping-bag',
+      iconColor: colors.text,
+      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
+        precision: 2,
+        separator: ',',
+        delimiter: '.',
+        unit: 'R$ ',
+        suffixUnit: ''
+      }),
+      indicatorIcon: true,
+      // onClose: () => setActionItems([]),
+      actionText: `${totalQuantity}`,
+      accentColor: colors.primary,
+    })
+    return () => Snackbar?.hide()
+  }, [totalPrice, totalQuantity, bottom,extraBottom]))
+
+
 
   if (loading === 'LOADING') return <Loading />
   if (error === 'NETWORK') return <Refresh onPress={() => navigation.replace('Product', { store, id })}/>
@@ -332,10 +393,10 @@ function Product({
                 keyboardShouldPersistTaps={'handled'}
                 style={{ flex: 1 }}
                 contentContainerStyle={[
-                  { marginTop: top, paddingBottom: top+bottom+extraBottom },
+                  { marginTop: top, paddingBottom: top+bottom+extraBottom+(Snackbar?.snackbarHeight) },
                   { flexGrow: 1, backgroundColor: colors.card }
                 ]}
-                scrollIndicatorInsets={{ top, bottom: bottom+extraBottom }}
+                scrollIndicatorInsets={{ top, bottom: bottom+extraBottom+(Snackbar?.snackbarHeight) }}
               >
 
                 <ProductModel data={data} store={store} onPress={Keyboard.dismiss} />
@@ -395,12 +456,18 @@ function Product({
             <Text style={{ color: colors.text, fontWeight: '500', fontSize: 16, padding: 10 }}>Adicione ao produto</Text>
             {data?.products?.map(item => (
               <View>
-                <CartProduct
+                <ProductCard 
+                  uri={item?.uri}
+                  name={item?.name}
+                  about={item?.about}
                   onPress={() => navigation.push('Product', { store, id: item?._id })}
-                  onChangeQuantity={quantity => handleProducts({ product: item?._id, quantity })}
-                  product={item}
-                  quantity={state?.components?.find(({ product }) => product === item?._id)?.quantity}
-                  comment={item?.about}
+                  price={useProductValue(item)}
+                  subPrice={item?.price}
+                  maxCount={item?.spinOff ? 1 : 99}
+                  count={state?.components?.find(({ product }) => product === item?._id)?.quantity}
+                  onChangeCount={quantity => handleAddQuantity(item?._id, { product: item?._id, quantity })}
+                  onContentPress={() => navigation.push('Product', { store, id: item?._id })}
+                  onImagePress={() => navigation.push('Product', { store, id: item?._id })}
                 /> 
                 {state?.components?.find(({ product }) => product === item?._id)?.quantity > 0 &&
                 <View style={{ paddingLeft: 30 }}>
@@ -410,14 +477,26 @@ function Product({
                         name={'subdirectory-arrow-right'} 
                         size={24} color={colors.text} 
                       />
-                      <CartProduct minimize
+                      <ProductCard minimize 
+                        uri={subItem?.uri}
+                        name={subItem?.name}
+                        about={subItem?.about}
+                        price={useProductValue(subItem)}
+                        subPrice={subItem?.price}
+                        maxCount={state?.components?.find(({ product }) => product === item?._id)?.quantity}
                         onPress={() => navigation.push('Product', { store, id: subItem?._id })}
-                        onChangeQuantity={quantity => handleSubProducts({ id: item?._id, product: subItem?._id, quantity })}
-                        product={subItem}
-                        quantity={
-                          state?.components?.find(({ product }) => product === item?._id)?.components?.find(({ product }) => product === subItem?._id)?.quantity 
+                        count={state?.components?.find(({ product }) => product === item?._id)?.components?.find(({ product }) => product === subItem?._id)?.quantity}
+                        onChangeCount={quantity => 
+                          handleAddQuantity(item?._id, { 
+                            components: state?.components?.find(_item => _item?.product === item?._id)
+                            ?.components?.map(_item => 
+                              (_item?.product !== subItem?._id) ? _item 
+                              : { ..._item, quantity }
+                            )
+                          })
                         }
-                        comment={subItem?.about}
+                        onContentPress={() => navigation.push('Product', { store, id: subItem?._id })}
+                        onImagePress={() => navigation.push('Product', { store, id: subItem?._id })}
                       />
                     </View> 
                   ))}
@@ -434,23 +513,48 @@ function Product({
               placeholderTextColor={colors.text}
               placeholder={'Ex: tirar a cebola, maionese à parte...'}
               maxLength={66}
-              value={comment}  
-              onChangeText={comment => setComment(comment)}
+              value={state?.comment}  
+              onChangeText={handleComment}
             />
 
         </ScrollView>
 
       </PullToRefreshView>
-      <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
-        onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
+      <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%', zIndex: 99999 }} 
+        onLayout={({ nativeEvent: { layout: { height } } }) => setExtraBottom(height ? height : 0)} 
       >
+
+        {/* {totalQuantity > 0 && 
+        <BlurView style={{ marginBottom: 10, width: '100%', borderRadius: 4, overflow: 'hidden' }} 
+          intensity={100} tint={dark ? 'dark' : 'light'}
+        >
+          <CardLink titleDirection={'row'} border={false}
+            tintColor={colors.primary}
+            color={colors.text}
+            title={
+              totalPrice ? MaskService.toMask('money', totalPrice as unknown as string, {
+                precision: 2,
+                separator: ',',
+                delimiter: '.',
+                unit: 'R$ ',
+                suffixUnit: ''
+              }) : 'xxx'
+            }
+            left={
+              <MaterialIcons style={{ padding: 10 }} name={'shopping-bag'} size={24} color={colors.text} />
+            }
+            rightLabel={!totalQuantity ? undefined : totalQuantity}
+            onPress={() => navigation.navigate('Bag', { store })}
+          />
+        </BlurView>} */}
+
         <BlurView style={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} 
           intensity={100} tint={dark ? 'dark' : 'light'}
         >
           <CardLink touchable={false} border={false}
             tintColor={colors.primary}
             title={ !total ? undefined :
-              MaskService.toMask('money', (total) as unknown as string, {
+              MaskService.toMask('money', (total / state?.quantity) as unknown as string, {
                 precision: 2,
                 separator: ',',
                 delimiter: '.',
@@ -459,7 +563,7 @@ function Product({
             })}
             subTitleStyle={{ textDecorationLine: !(!data?.single && total > additionals) && data?.offset ? 'line-through' : 'none' }}
             subTitle={ (!additionals) ? undefined :
-              MaskService.toMask('money', (data?.single ? valor+additionals : additionals) as unknown as string, {
+              MaskService.toMask('money', (data?.single ? value+additionals : additionals) as unknown as string, {
                 precision: 2,
                 separator: ',',
                 delimiter: '.',
@@ -470,21 +574,19 @@ function Product({
             color={colors.text}
             center={
               <View style={{ flex: 1, alignItems: 'center' }}>
-                <InputCount minValue={1} value={quantity} onChangeValue={quantity => setQuantity(quantity)}>
-                  <Text style={[styles.totalPrice, { color: (quantity !== state?.quantity) ? colors.primary : colors.text }]}>{quantity}</Text>
-                </InputCount>
+                <InputCount minValue={1} value={state?.quantity} onChangeValue={handleQuantity} />
               </View>
             }
             right={
-              <View style={{ flex: 1, alignItems: 'flex-end', padding: 10 }}>
+              <View style={{ width: '33.33%', alignItems: 'flex-end', padding: 10 }}>
                 <TextButton style={{ padding: 0 }} textTransform={'uppercase'}
-                  label={!state?._id ? 'Adicionar' : (quantity !== state?.quantity || comment !== state?.comment) ? 'Salvar' : 'Remover'}
-                  color={(!state?._id || (quantity !== state?.quantity || comment !== state?.comment)) ? colors.primary : 'red'}
+                  label={!state?._id ? 'Adicionar' : up ? 'Salvar' : 'Remover'}
+                  color={(!state?._id || up) ? colors.primary : colors.notification}
                   fontSize={16}
-                  disabled={!data?.single && total > additionals}
+                  disabled={!data?.single && (total / state?.quantity) > additionals}
                   onPress={() => 
-                    !state?._id ? saveToCart({ quantity, comment }) 
-                    : (quantity !== state?.quantity || comment !== state?.comment) ? onUpdate({ quantity, comment })
+                    !state?._id ? saveToCart({ quantity: state?.quantity, comment: state?.comment }) 
+                    : up ? onUpdate({ quantity: state?.quantity, comment: state?.comment })
                     : onRemove()
                   }
                 />
@@ -493,7 +595,7 @@ function Product({
                   color: colors.text, fontSize: 14,
                   fontWeight: '500',
                 }}>{ 
-                  MaskService.toMask('money', (total*quantity) as unknown as string, {
+                  MaskService.toMask('money', (total) as unknown as string, {
                         precision: 2,
                         separator: ',',
                         delimiter: '.',
@@ -505,115 +607,15 @@ function Product({
             }
           />
         </BlurView>
-        <KeyboardSpacer topSpacing={-(bottom)} />
+
+        
+      <KeyboardSpacer topSpacing={-(bottom+extraBottom+(Snackbar?.snackbarHeight))} />
       </View>
-      <KeyboardSpacer topSpacing={-(top+bottom+extraBottom)} />
     </View>
   )
 }
 
 export default Product
 
-const styles = StyleSheet.create({
-  totalPrice: {
-    fontSize: 16,
-    fontWeight: '500',
-  }
-})
 
-
-
-
-interface CartProductProps {
-  minimize?: boolean
-  product: ProductService.ProductData
-  quantity: number
-  comment: string
-  onPress?: () => any
-  onChangeQuantity?: (quantity: number) => any
-}
-const CartProduct: React.FC<CartProductProps> = ({
-  product,
-  quantity=0,
-  comment,
-  onChangeQuantity,
-  onPress,
-  minimize=false
-}) => {
-  const { colors } = useTheme()
-  
-  
-  return (
-      <View style={{ 
-        // padding: 10,
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        backgroundColor: colors.card,
-      }}>
-          <View style={{ flex: 1 }}>
-            <TouchableOpacity onPress={onPress}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                {!minimize ? <Image source={{ uri: product?.uri }} style={[{ 
-                  margin: 10,
-                  height: 75, width: 75, 
-                  backgroundColor: colors.border, borderRadius: 4,
-                  // borderWidth: 1, borderColor: colors.border
-                }]}/> :
-                <></>
-                  // <MaterialIcons name={'subdirectory-arrow-right'} size={24} color={colors.text} />
-                }
-                <View style={{ flex: 1, alignItems: 'stretch', padding: 10 }}>
-                  <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '500' }}>{product?.name}</Text>
-                  {!minimize && <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14,  opacity: .8 }}>{comment ? comment : product?.about}</Text>}
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                    {product?.promotions?.length > 0 && 
-                    <Text numberOfLines={1} style={{ marginRight: 5, color: colors.text, fontSize: 16, fontWeight: '500', opacity: .8 }}>{
-                      MaskService.toMask('money', 
-                    (( product?.price - 
-                      (
-                        (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-                        * product?.price
-                      )
-                    ) 
-                    ) as unknown as string, {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                      })
-                    }</Text>}
-
-                    <Text numberOfLines={1} style={{ 
-                      textDecorationLine: product?.promotions?.length > 0 ? 'line-through' : 'none', 
-                      fontSize: 14, 
-                      color: colors.text, fontWeight: '500', opacity: .8 
-                    }}>{
-                      MaskService.toMask('money', (product?.price) as unknown as string, {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                      })
-                    }</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-        <View style={{ height: '100%' }}>
-          <View style={{ flex: 1 }}>
-            <InputCount maxValue={product?.spinOff ? 1 : 99}
-              value={quantity}
-              onChangeValue={onChangeQuantity}
-              tintColor={colors.text}
-            />
-          </View>
-        </View>
-      </View>
-  )
-}
 

@@ -39,6 +39,7 @@ import MakeStore from '../screens/MakeStore';
 import Order from '../screens/Order';
 import Orders from '../screens/Orders';
 import Offers from '../screens/Offers';
+import { SnackBarProvider } from '../contexts/snackbar';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
@@ -50,9 +51,11 @@ export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeNa
               theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}
               fallback={Loading}
             >
-              <BottomHalfModalProvider>
-                <RootNavigator />
-              </BottomHalfModalProvider>
+              <SnackBarProvider>
+                <BottomHalfModalProvider>
+                  <RootNavigator />
+                </BottomHalfModalProvider>
+              </SnackBarProvider>
             </NavigationContainer>
           </AndressProvider>
         </AuthProvider>

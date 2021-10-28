@@ -35,6 +35,7 @@ import { MaskService } from 'react-native-masked-text';
 import useLoadScreen from '../../hooks/useLoadScreen';
 import api from '../../services/api';
 import { OrderData } from '../../services/order';
+import useProductPrice from '../../hooks/useProductPrice';
 
 export default function Checkout({ 
   navigation,
@@ -58,7 +59,6 @@ export default function Checkout({
     thingValue: 0,
   } as OrderData)
 
-  const [totalPrice, setTotalPrice] = React.useState<number>(0)
   const [deliveryPrice, setDeliveyPrice] = React.useState<number>(0)
 
   const { 
@@ -109,19 +109,8 @@ export default function Checkout({
 
   const minDeliveryBuyValue = data?.store?.minDeliveryBuyValue | 0
 
-  
-  useEffect(() => {
-    setTotalPrice(
-      products?.map(item => 
-        (
-          item.product?.price - 
-          (
-            (Math.max(...item?.product?.promotions?.map(item => item?.percent), 0) / 100 )
-            * item.product?.price
-          )
-        ) * item.quantity)?.reduce((acc, cur) => acc + cur, 0)
-    )
-  } ,[setTotalPrice, products])
+  const totalPrice = products?.map(item => useProductPrice(item) * item?.quantity)?.reduce((acc, cur) => acc + cur, 0)
+
           
   const onSubimit = async () => {
     try {

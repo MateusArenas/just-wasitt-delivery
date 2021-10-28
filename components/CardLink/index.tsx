@@ -11,6 +11,7 @@ interface CardLinkProps {
   subTitle?: string | number
   subTitleStyle?: StyleProp<TextStyle>
   titleContainerStyle?: StyleProp<ViewStyle>
+  titleContentContainerStyle?: StyleProp<ViewStyle>
   rightLabel?: string | number
   centerLabel?: string | number
   disabled?: boolean
@@ -44,7 +45,8 @@ const CardLink: React.FC<CardLinkProps> = ({
   touchable=true,
   titleDirection='column',
   titleContainerStyle,
-  titleFontWeight='normal'
+  titleFontWeight='normal',
+  titleContentContainerStyle={}
 }) => {
   const { colors } = useTheme()
   return (
@@ -52,7 +54,7 @@ const CardLink: React.FC<CardLinkProps> = ({
       <CardLinkTouchable disabled={disabled} touchable={touchable} onPress={() => { onPress(); onPressed(); }}>
         <View style={[styles.inner]}>
           {left}
-          <View style={[styles.contentContainer, { borderBottomWidth: (!!border && border !== 'top') ? 1 : 0, borderTopWidth: (!!border && border === 'top') ? 1 : 0 }, { borderColor: colors.border }]}>
+          <View style={[styles.contentContainer, titleContentContainerStyle, { borderBottomWidth: (!!border && border !== 'top') ? 1 : 0, borderTopWidth: (!!border && border === 'top') ? 1 : 0 }, { borderColor: colors.border }]}>
             <View style={[styles.titleContainer, titleContainerStyle]}>
               <View style={{ padding: 10, paddingLeft: left ? 0 : 10, flexDirection: titleDirection }}>
                 {title && <Text numberOfLines={1} style={[styles.title, { color, fontWeight: titleFontWeight }]}>{capitalizeFisrtLetter(title)}</Text>}
