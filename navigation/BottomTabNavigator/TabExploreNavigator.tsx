@@ -21,7 +21,8 @@ import Product from '../../screens/Product';
 import Store from '../../screens/Store';
 import Category from '../../screens/Category';
 import { BlurView } from 'expo-blur';
-
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { setSnackBottomOffset } from '../../hooks/useSnackbar';
 
 const Stack = createStackNavigator<TabExploreParamList>()
 
@@ -30,6 +31,17 @@ function TabExploreNavigator({
 } : StackScreenProps<BottomTabParamList, 'TabExplore'>) {
   const { colors, dark } = useTheme();
   const HeaderHeigth = useHeaderHeight()
+
+  const bottom = React.useContext(BottomTabBarHeightContext) || 0
+
+  const setBottomOffset = setSnackBottomOffset()
+  useFocusEffect(React.useCallback(() => {
+    setBottomOffset(bottom)
+    
+    return function cleanup () {
+      setBottomOffset(0)
+    }
+  }, [bottom,setBottomOffset]))
 
   return (
     <Stack.Navigator headerMode="screen"

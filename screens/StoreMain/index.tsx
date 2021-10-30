@@ -83,7 +83,6 @@ const Main: React.FC = () => {
       data={[{ id: 0, uri: '' }]}
       height={120}
       onPressChange={item => {
-        console.log(item);
       }}  
     />
 

@@ -4,10 +4,10 @@
  */
 
  import { Ionicons, MaterialIcons } from '@expo/vector-icons';
- import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
+ import { createBottomTabNavigator, BottomTabBar, BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
  import { createStackNavigator, StackScreenProps } from '@react-navigation/stack';
  import * as React from 'react';
- import { Image, View } from 'react-native'
+ import { Image, View, Text } from 'react-native'
  
  import Colors from '../../constants/Colors';
  import useColorScheme from '../../hooks/useColorScheme';
@@ -23,6 +23,8 @@ import AuthContext from '../../contexts/auth';
 import { writeAndress } from '../../utils';
 import { TextInput } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
+import SnackBarContext from '../../contexts/snackbar';
+import { setSnackBottomOffset } from '../../hooks/useSnackbar';
  
  const BottomTab = createBottomTabNavigator<BottomTabParamList>();
  
@@ -39,12 +41,27 @@ import { BlurView } from 'expo-blur';
     });
   }, []))
 
+  const bottom = React.useContext(BottomTabBarHeightContext) || 0
+
+  const setBottomOffset = setSnackBottomOffset()
+  useFocusEffect(React.useCallback(() => {
+    setBottomOffset(bottom)
+
+    return function cleanup () {
+      setBottomOffset(0)
+    }
+  }, [bottom, setBottomOffset]))
+
+
    return (
      <BottomTab.Navigator
        initialRouteName="TabHome"
        tabBarOptions={{ 
           keyboardHidesTabBar: true,
-          style: { backgroundColor: 'transparent' },
+          style: { 
+            backgroundColor: 'transparent', 
+            elevation: 0, shadowColor: 'transparent', borderTopWidth: null,
+          },
           activeTintColor: colors.primary, 
           labelStyle: { marginBottom: 3 },
           // showLabel: false
@@ -54,6 +71,7 @@ import { BlurView } from 'expo-blur';
             position: 'absolute',
             bottom: 0, left: 0, right: 0
           }]} intensity={100} tint={dark ? 'dark' : 'light'} >
+            <View style={{ width: '100%', height: 2, backgroundColor: colors.border, opacity: .25 }} />
             <BottomTabBar {...props}/>
           </BlurView>
         )}

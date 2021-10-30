@@ -36,6 +36,9 @@ import SwiperFlatList, { Pagination } from 'react-native-swiper-flatlist';
 import { MaskService } from 'react-native-masked-text';
 import useProductPrice from '../../hooks/useProductPrice';
 import SnackBarContext from '../../contexts/snackbar';
+import SnackBar from '../../components/SnackBar';
+import { setSnackBottomOffset, setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+
 
 function Store({ 
   navigation,
@@ -348,34 +351,51 @@ function Store({
     });
   }, [navigation, data, user, BottomHalfModal]))
 
-  const Snackbar = useContext(SnackBarContext)
+  // const Snackbar = useContext(SnackBarContext)
 
-  useFocusEffect(useCallback(() => {
-    Snackbar?.show({
-      onPress: () => navigation.navigate('Bag', { store }),
-      // visible: true,
-      messageColor: colors.text,
-      position: "bottom",
-      bottom,
-      icon: 'shopping-bag',
-      iconColor: colors.text,
-      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
-        precision: 2,
-        separator: ',',
-        delimiter: '.',
-        unit: 'R$ ',
-        suffixUnit: ''
-      }),
-      indicatorIcon: true,
-      // onClose: () => setActionItems([]),
-      actionText: `${totalQuantity}`,
-      accentColor: colors.primary,
-    })
+  // useFocusEffect(useCallback(() => {
+  //   Snackbar?.open({
+  //     onPress: () => navigation.navigate('Bag', { store }),
+  //     messageColor: colors.text,
+  //     position: "bottom",
+  //     icon: 'shopping-bag',
+  //     iconColor: colors.text,
+  //     textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
+  //       precision: 2,
+  //       separator: ',',
+  //       delimiter: '.',
+  //       unit: 'R$ ',
+  //       suffixUnit: ''
+  //     }),
+  //     indicatorIcon: true,
+  //     // onClose: () => setActionItems([]),
+  //     actionText: `${totalQuantity}`,
+  //     accentColor: colors.primary,
+  //   })
 
-    return () => Snackbar?.hide()
+  //   return () => Snackbar?.close()
 
-  }, [totalPrice, totalQuantity, bottom]))
-  
+  // }, [totalPrice, totalQuantity]))
+
+  const setExtraBottomOffset = setSnackExtraBottomOffset()
+
+  useFocusEffect(React.useCallback(() => {
+    if (extraBottom) setExtraBottomOffset(extraBottom+20)
+    return function cleanup () {
+      setExtraBottomOffset(0)
+    }
+  }, [setExtraBottomOffset, extraBottom]))
+
+  function formatedMoney (value: number = 0) : string {
+    const moneyOptions = {
+      precision: 2,
+      separator: ',',
+      delimiter: '.',
+      unit: 'R$ ',
+      suffixUnit: ''
+    }
+    return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
+  }
 
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('Store', { store })}/>
@@ -460,6 +480,24 @@ function Store({
         />
         
       </PullToRefreshView>
+
+      <SnackBar visible
+        onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)}
+        messageColor={colors.text}
+        dark={dark}
+        position={"bottom"}
+        bottom={bottom}
+        icon={'shopping-bag'}
+        iconColor={colors.text}
+        textDirection={'row'}
+        textMessage={formatedMoney(totalPrice)}
+        textSubMessage={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+        formatedMoney(data?.store?.minDeliveryBuyValue))}
+        indicatorIcon
+        onPress={() => navigation.navigate('Bag', { store })}
+        actionText={`${totalQuantity}`}
+        accentColor={colors.primary}
+      />
 
       {/* {(totalQuantity > 0) && 
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 

@@ -14,7 +14,7 @@ import ProductModel from '../../models/Product';
 import BottomHalfModalContext from '../../contexts/BottomHalfModal';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { FlatList, Image, View, Text, ScrollView, StyleSheet, useWindowDimensions, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Animated } from 'react-native';
-import { useFocusEffect, useRoute, useTheme } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useRoute, useTheme } from '@react-navigation/native';
 import IconButton from '../../components/IconButton';
 import InputCount from '../../components/InputCount';
 import InputTextArea from '../../components/InputTextArea';
@@ -34,7 +34,9 @@ import { useDebounceHandler } from '../../hooks/useDebounce';
 import useProductPrice, { useProductAdditionals, useProductValue } from '../../hooks/useProductPrice';
 import ProductCard from '../../components/ProductCard';
 import useLoadScreen from '../../hooks/useLoadScreen';
+import SnackBar from '../../components/SnackBar';
 import SnackBarContext from '../../contexts/snackbar';
+import { setSnackBottomOffset, setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
 
 
 const initialState = { 
@@ -61,6 +63,7 @@ function Product({
   const top = useHeaderHeight()
   const bottom = useContext(BottomTabBarHeightContext) || 0
   const [extraBottom, setExtraBottom] = React.useState(0)
+  const [extraSnackBottom, setExtraSnackBottom] = React.useState(0)
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -245,7 +248,6 @@ function Product({
             }))
           } })
           //load cart
-          console.log(local?._id, 'yyy');
 
           if (local) {
             dispatch({ type: 'init', payload: {
@@ -269,7 +271,6 @@ function Product({
 
   const saveToCart = async ({ quantity, comment }) => {
     try {
-      console.log('save', { quantity, comment });
       await BundleService.create({ store, userId: user?._id, body: { 
         _id: id, 
         store: data?.store?._id,
@@ -292,7 +293,6 @@ function Product({
 
   const onUpdate = async ({ quantity, comment }) => {
     try {
-      console.log('uppp', { quantity, comment });
       await BundleService.update({ store, userId: user?._id, body: { 
         _id: id, 
         store: data?.store?._id,
@@ -347,32 +347,43 @@ function Product({
     } })
   }
 
-  const Snackbar = useContext(SnackBarContext)
+  // const Snackbar = useContext(SnackBarContext)
 
-  useFocusEffect(useCallback(() => {
-    Snackbar?.show({
-      onPress: () => navigation.navigate('Bag', { store }),
-      messageColor: colors.text,
-      position: "bottom",
-      bottom: (bottom + (extraBottom/2) + 20),
-      icon: 'shopping-bag',
-      iconColor: colors.text,
-      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
-        precision: 2,
-        separator: ',',
-        delimiter: '.',
-        unit: 'R$ ',
-        suffixUnit: ''
-      }),
-      indicatorIcon: true,
-      // onClose: () => setActionItems([]),
-      actionText: `${totalQuantity}`,
-      accentColor: colors.primary,
-    })
-    return () => Snackbar?.hide()
-  }, [totalPrice, totalQuantity, bottom,extraBottom]))
+  // useFocusEffect(useCallback(() => {
+  //   if (extraBottom) Snackbar?.open({
+  //     onPress: () => navigation.navigate('Bag', { store }),
+  //     messageColor: colors.text,
+  //     position: "bottom",
+  //     bottom: ((extraBottom/2) + 20),
+  //     icon: 'shopping-bag',
+  //     iconColor: colors.text,
+  //     textMessage: formatedMoney(totalPrice),
+  //     indicatorIcon: true,
+  //     actionText: `${totalQuantity}`,
+  //     accentColor: colors.primary,
+  //   })
+  //   return () => Snackbar?.close()
+  // }, [totalPrice, totalQuantity,extraBottom]))
 
+  const setExtraBottomOffset = setSnackExtraBottomOffset()
 
+  useFocusEffect(React.useCallback(() => {
+    if (extraBottom) setExtraBottomOffset((extraBottom+20)+((extraSnackBottom/2)+20))
+    return function cleanup () {
+      setExtraBottomOffset(0)
+    }
+  }, [setExtraBottomOffset, extraBottom, extraSnackBottom]))
+
+  function formatedMoney (value: number = 0) : string {
+    const moneyOptions = {
+      precision: 2,
+      separator: ',',
+      delimiter: '.',
+      unit: 'R$ ',
+      suffixUnit: ''
+    }
+    return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
+  }
 
   if (loading === 'LOADING') return <Loading />
   if (error === 'NETWORK') return <Refresh onPress={() => navigation.replace('Product', { store, id })}/>
@@ -393,10 +404,10 @@ function Product({
                 keyboardShouldPersistTaps={'handled'}
                 style={{ flex: 1 }}
                 contentContainerStyle={[
-                  { marginTop: top, paddingBottom: top+bottom+extraBottom+(Snackbar?.snackbarHeight) },
+                  { marginTop: top, paddingBottom: top+bottom+(extraBottom/2)+(extraSnackBottom) },
                   { flexGrow: 1, backgroundColor: colors.card }
                 ]}
-                scrollIndicatorInsets={{ top, bottom: bottom+extraBottom+(Snackbar?.snackbarHeight) }}
+                scrollIndicatorInsets={{ top, bottom: bottom+(extraBottom/2)+(extraSnackBottom) }}
               >
 
                 <ProductModel data={data} store={store} onPress={Keyboard.dismiss} />
@@ -440,16 +451,11 @@ function Product({
                             `${data?.store?.deliveryTimeMax} min` 
                           : 'XX:XX min'}`
                     }</Text>
-                    <Text style={{ alignSelf: 'baseline',padding: 10,fontWeight: '500', fontSize: 16, color: colors.text }}>{
-                      MaskService.toMask('money', (data?.store?.deliveryPrice | 0) as unknown as string, 
-                      {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                      }) 
-                    }</Text>
+                    <Text style={{ 
+                      alignSelf: 'baseline',
+                      padding: 10,fontWeight: '500', 
+                      fontSize: 16, color: colors.text 
+                    }}>{formatedMoney(data?.store?.deliveryPrice)}</Text>
                   </View>
                 }
 
@@ -510,6 +516,7 @@ function Product({
                 ref?.current?.scrollToEnd({ animated: true })
               }, 250)
             }}
+            style={{ paddingBottom: 20 }}
               placeholderTextColor={colors.text}
               placeholder={'Ex: tirar a cebola, maionese à parte...'}
               maxLength={66}
@@ -520,57 +527,34 @@ function Product({
         </ScrollView>
 
       </PullToRefreshView>
+      <SnackBar visible
+        onLayout={e => setExtraSnackBottom(e?.nativeEvent?.layout?.height)}
+        messageColor={colors.text}
+        dark={dark}
+        position={"bottom"}
+        bottom={bottom+(extraBottom/2)+20}
+        icon={'shopping-bag'}
+        iconColor={colors.text}
+        textDirection={'row'}
+        textMessage={formatedMoney(totalPrice)}
+        textSubMessage={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+        formatedMoney(data?.store?.minDeliveryBuyValue))}
+        indicatorIcon
+        onPress={() => navigation.navigate('Bag', { store })}
+        actionText={`${totalQuantity}`}
+        accentColor={colors.primary}
+      />
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%', zIndex: 99999 }} 
-        onLayout={({ nativeEvent: { layout: { height } } }) => setExtraBottom(height ? height : 0)} 
+        onLayout={({ nativeEvent: { layout: { height } } }) => setExtraBottom(height)} 
       >
-
-        {/* {totalQuantity > 0 && 
-        <BlurView style={{ marginBottom: 10, width: '100%', borderRadius: 4, overflow: 'hidden' }} 
-          intensity={100} tint={dark ? 'dark' : 'light'}
-        >
-          <CardLink titleDirection={'row'} border={false}
-            tintColor={colors.primary}
-            color={colors.text}
-            title={
-              totalPrice ? MaskService.toMask('money', totalPrice as unknown as string, {
-                precision: 2,
-                separator: ',',
-                delimiter: '.',
-                unit: 'R$ ',
-                suffixUnit: ''
-              }) : 'xxx'
-            }
-            left={
-              <MaterialIcons style={{ padding: 10 }} name={'shopping-bag'} size={24} color={colors.text} />
-            }
-            rightLabel={!totalQuantity ? undefined : totalQuantity}
-            onPress={() => navigation.navigate('Bag', { store })}
-          />
-        </BlurView>} */}
-
         <BlurView style={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} 
           intensity={100} tint={dark ? 'dark' : 'light'}
         >
           <CardLink touchable={false} border={false}
             tintColor={colors.primary}
-            title={ !total ? undefined :
-              MaskService.toMask('money', (total / state?.quantity) as unknown as string, {
-                precision: 2,
-                separator: ',',
-                delimiter: '.',
-                unit: 'R$ ',
-                suffixUnit: ''
-            })}
+            title={formatedMoney(total / state?.quantity)}
             subTitleStyle={{ textDecorationLine: !(!data?.single && total > additionals) && data?.offset ? 'line-through' : 'none' }}
-            subTitle={ (!additionals) ? undefined :
-              MaskService.toMask('money', (data?.single ? value+additionals : additionals) as unknown as string, {
-                precision: 2,
-                separator: ',',
-                delimiter: '.',
-                unit: 'R$ ',
-                suffixUnit: ''
-            })
-          }
+            subTitle={ (!additionals) ? undefined : formatedMoney(data?.single ? value+additionals : additionals)}
             color={colors.text}
             center={
               <View style={{ flex: 1, alignItems: 'center' }}>
@@ -594,22 +578,13 @@ function Product({
                 <Text style={{ 
                   color: colors.text, fontSize: 14,
                   fontWeight: '500',
-                }}>{ 
-                  MaskService.toMask('money', (total) as unknown as string, {
-                        precision: 2,
-                        separator: ',',
-                        delimiter: '.',
-                        unit: 'R$ ',
-                        suffixUnit: ''
-                  })}
+                }}>{formatedMoney(total)}
                 </Text>
               </View>
             }
           />
         </BlurView>
-
-        
-      <KeyboardSpacer topSpacing={-(bottom+extraBottom+(Snackbar?.snackbarHeight))} />
+      <KeyboardSpacer topSpacing={-(bottom+(extraBottom))} />
       </View>
     </View>
   )

@@ -15,6 +15,8 @@ import { View } from '../../components/Themed';
 import SearchTabNavigator from '../SearchTabNavigator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { setSnackBottomOffset } from '../../hooks/useSnackbar';
 
 const TabHomeStack = createStackNavigator<TabHomeParamList>()
 
@@ -22,6 +24,18 @@ function TabHomeNavigator({
   navigation,
   route
 } : StackScreenProps<BottomTabParamList, 'TabHome'>) {
+
+  const bottom = React.useContext(BottomTabBarHeightContext) || 0
+
+  const setBottomOffset = setSnackBottomOffset()
+  useFocusEffect(React.useCallback(() => {
+    setBottomOffset(bottom)
+
+    return function cleanup () {
+      setBottomOffset(0)
+    }
+  }, [bottom, setBottomOffset]))
+
   const InputRef = React.useRef<TextInput>()
   const [category, setCategory] = React.useState(
     route.params?.category === 'main' || !route.params?.category ? 

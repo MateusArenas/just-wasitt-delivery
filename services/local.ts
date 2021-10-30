@@ -12,7 +12,6 @@ export async function all (key: string) : Promise<Array<any | localData>> {
     const keys = allKeys.filter(k => k.includes(key))
     const items = await AsyncStorage.multiGet(keys)
     const data = items.map(([_key, _item]) => [...JSON.parse(_item)])
-    console.log('zzz-mult-index', data);
     return Promise.resolve(data)
   } catch(err) { 
     return Promise.reject(err)

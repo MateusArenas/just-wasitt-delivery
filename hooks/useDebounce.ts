@@ -6,7 +6,6 @@ export function useDebounceHandler<T extends (...args: any[]) => any>(callback: 
     
     var later = function() {
       timeout = null;
-      console.log(args, 'deeee');
 			if (!immediate) callback(args);
 		};
 		var callNow = immediate && !timeout;

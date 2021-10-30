@@ -34,9 +34,7 @@ export default function useService<T>(Service, loadMethod?: keyof typeof Service
     const onService = React.useCallback(async (method: keyof typeof Service, params, isRefreshing?: boolean) => {
       try {
         setState(state => ({...state, loading: isRefreshing ? 'REFRESHING' : 'LOADING' }))
-        console.log('antes view -> ', method, params);
         const response = await Service[method as any](params)
-        console.log(typeof response,' view -> ', method, params);
         if (typeof response === 'boolean' && !!loadMethod) return await onService(loadMethod, loadParams, true)
         const data = !!response?.data ? response?.data : response
         response.data = Array.isArray(data) ? data : [data]

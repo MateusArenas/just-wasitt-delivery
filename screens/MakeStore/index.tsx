@@ -495,9 +495,6 @@ const HoraryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBarH
 
 
 const DeliveryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBarHeight=0 }) => {
-  useEffect(() => {
-    console.log('mateus', state?.deliveryPrice);
-  }, [state])
   const { colors } = useTheme()
   const topSpacing = React.useContext(BottomTabBarHeightContext) || 0
 
@@ -584,9 +581,7 @@ const DeliveryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBa
 }
 
 const PaymentRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBarHeight=0 }) => {
-  useEffect(() => {
-    console.log('mateus', state?.deliveryPrice);
-  }, [state])
+
   const { colors } = useTheme()
   const topSpacing = React.useContext(BottomTabBarHeightContext) || 0
 

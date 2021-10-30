@@ -59,10 +59,8 @@ export async function search ({ id, userId } : { id: string, userId: string }) :
     
     const { data: store } = await StoreService.search({ id: localData?.store })
     
-    console.log('yuyu, bagz', localData);
     const bundles = await BundleService.index({ store: store?.name, userId })
 
-    console.log('yuyu, bag', { ...localData, store, bundles });
     
 
     // const bundles = await Promise.all(localData?.bundles?.map(async (bundle: bundleData) => {

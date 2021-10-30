@@ -82,7 +82,6 @@ export interface ManageDate {
 export async function index ({ ...params }) {
   try {
     const response = await api.get('/manage', { params })
-    console.log('caiu na chamada', response);
     
     return Promise.resolve(response as AxiosResponse<Array<ManageDate>>)
   } catch(err) { 
@@ -93,7 +92,6 @@ export async function index ({ ...params }) {
 export async function create ({ body } : { body: any }) {
   try {
     const response = await api.post('/manage', body)
-    console.log('caiu na chamada', response);
     
     return Promise.resolve(response as AxiosResponse<Array<ManageDate>>)
   } catch(err) { 
@@ -114,7 +112,6 @@ export async function remove ({ id } : { id: string }) {
 export async function search ({ id } : { id: string }) {
   try {
     const response = await api.get(`/manage/${id}`)
-    console.log('caiu na chamada', response);
     
     return Promise.resolve(response as AxiosResponse<Array<ManageDate>>)
   } catch(err) { 
@@ -125,7 +122,6 @@ export async function search ({ id } : { id: string }) {
 export async function update ({ id, body } : { body: any }) {
   try {
     const response = await api.put(`/manage/${id}`, body)
-    console.log('caiu na chamada', response);
     
     return Promise.resolve(response as AxiosResponse<Array<ManageDate>>)
   } catch(err) { 

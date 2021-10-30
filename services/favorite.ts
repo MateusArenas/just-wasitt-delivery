@@ -32,7 +32,6 @@ export async function index ({ store, userId } : { store: string, userId: string
   try {
     const data = await LocalStorage.index(`/${VERSION}/${userId}/favorite/store/${store}`)
     const params = { ids: data?.map(item => item?.product), store }
-    console.log('oqs', params);
     
     const response = await ProductService.index({ store, params })
     response.data = data?.map(item => 

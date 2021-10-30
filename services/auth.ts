@@ -50,7 +50,6 @@ export async function register (body: { email: string, password: string, name: s
 }
 
 export function saveToken (token: string) {
-  console.log(`Bearer ${token}`, 'dentro do token save');
   api.defaults.headers.authorization = `Bearer ${token}`
 }
 

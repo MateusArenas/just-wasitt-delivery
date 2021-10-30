@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs"
+import { BottomTabBarHeightContext, BottomTabScreenProps } from "@react-navigation/bottom-tabs"
 import { BottomTabParamList, RootStackParamList, TabStoreMainParamList } from "../../types"
 import { MaterialIcons } from '@expo/vector-icons';
 import { createStackNavigator, HeaderBackButton, HeaderTitle, StackScreenProps } from '@react-navigation/stack';
-import { StackActions, useTheme } from '@react-navigation/native';
+import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
 import { SafeAreaView, TouchableOpacity, View } from 'react-native';
 import IconButton from '../../components/IconButton';
 import useRootNavigation from '../../hooks/useRootNavigation';
@@ -32,6 +32,7 @@ import { FlatList } from 'react-native-gesture-handler';
 import CardLink from '../../components/CardLink';
 import Checkout from '../../screens/Checkout';
 import { BlurView } from 'expo-blur';
+import { setSnackBottomOffset } from '../../hooks/useSnackbar';
 
 const Stack = createStackNavigator<TabStoreMainParamList>();
 
@@ -40,6 +41,17 @@ function TabAccountNavigator({
   route
 } : BottomTabScreenProps<BottomTabParamList, 'TabStoreMain'>) {  
   const { colors, dark } = useTheme();
+
+  const bottom = React.useContext(BottomTabBarHeightContext) || 0
+
+  const setBottomOffset = setSnackBottomOffset()
+  useFocusEffect(React.useCallback(() => {
+    setBottomOffset(bottom)
+
+    return function cleanup () {
+      setBottomOffset(0)
+    }
+  }, [bottom, setBottomOffset]))
 
   return (
     <Stack.Navigator initialRouteName="Account" 

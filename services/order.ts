@@ -62,13 +62,9 @@ export async function search ({ store, id } : { store: string, id: string }) {
 
 export async function create ({ store, body } : {store: string, body: Partial<OrderData>}) {
   try {
-    console.log('url', `/store/${store}/orders`, body)
     const response = await api.post(`/store/${store}/orders`, body)
-    console.log('response', response?.data)
     return Promise.resolve(response as AxiosResponse<Array<OrderData>>)
   } catch(err) {  
-    console.log('response error', err)
-
     return Promise.reject(err as AxiosError<errorData>)
   } 
 }

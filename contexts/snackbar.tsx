@@ -1,78 +1,84 @@
 import { useTheme } from "@react-navigation/native";
 import React, { useContext, useMemo, useRef } from "react";
-import { Animated, FlatListProps, Text, TouchableWithoutFeedback, View } from "react-native";
-import { Modalize } from "react-native-modalize";
-import { IHandles } from "react-native-modalize/lib/options";
-import { BlurView } from "expo-blur";
 import SnackBar, { SnackbarComponentProps } from "../components/SnackBar";
-import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
-
+import Animated, { cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue,  } from "react-native-reanimated";
+import { createContext, useContextSelector } from 'use-context-selector';
 interface SnackBarData {
-  show: (options: SnackbarComponentProps) => any
-  hide: () => any
-  push: (options: SnackbarComponentProps) => any
+  setBottomOffset: React.Dispatch<React.SetStateAction<number>>
+  setExtraBottomOffset: React.Dispatch<React.SetStateAction<number>>
   snackbarHeight: number
+  open: (props: SnackbarComponentProps) => any
+  close: () => any
 }
 
-const SnackBarContext = React.createContext<SnackBarData>({} as SnackBarData)
+const SnackBarContext = createContext<SnackBarData>({} as SnackBarData)
 
 export const SnackBarProvider: React.FC = ({ children }) => {
-  const bottom = useContext(BottomTabBarHeightContext) || 0
-
   const { dark } = useTheme();
-  const SnackbarRef = useRef(null)
 
-  const [visible, setVisible] = React.useState(false)
-  const [options, setOptions] = React.useState<SnackbarComponentProps>({})
+  const [snackbarHeight, setSnackbarHeight] = React.useState(0)
+  const [snackbarProps, setSnackbarProps] = React.useState<SnackbarComponentProps>({})
+  const snackbarRef = React.useRef(null)
 
-  const [snackbarHeight, setSnackbarHeight] = React.useState<number>(0)
-//   const snackbarHeight = _snackbarHeight+bottom
+  const [bottomOffset, setBottomOffset] = React.useState<number>(0)
+  const [extraBottomOffset, setExtraBottomOffset] = React.useState<number>(0)
+  
+  const open = React.useCallback(props => {
+    setSnackbarProps(props)
+    snackbarRef?.current?.open()
+  }, [setSnackbarProps, snackbarRef])
 
-  const [snackbars, setSnackbars] = React.useState<Array<any>>([])
+  const close = React.useCallback(() => {
+    snackbarRef?.current?.close()
+  }, [snackbarRef])
 
-  const show: SnackBarData['show'] = options => {
-    setOptions(options)
-    setVisible(true)
-    SnackbarRef.current?.open()
-  }
+  const onLayout = React.useCallback(e => {
+    const height = e?.nativeEvent?.layout?.height
+    setSnackbarHeight(height)
+    snackbarProps?.onLayout && snackbarProps?.onLayout(e)
+  }, [setSnackbarHeight, snackbarProps])
 
-  const hide: SnackBarData['hide'] = () => {
-    setVisible(false)
-    SnackbarRef.current?.close()
-  }
+  const translateValue = useSharedValue(bottomOffset+extraBottomOffset);
 
-  const push: SnackBarData['push'] = options => {
-    const _key = (snackbars?.length > 0) ? snackbars?.length-1 : 0 
-    setSnackbars(snacks => [...snacks, { ...options, _key }])
-  }
+  React.useEffect(() => {
+    if (translateValue.value  !== bottomOffset) {
+      translateValue.value = Animated.withTiming(bottomOffset, 
+        { duration: 250 }
+      )
+    } 
+    return function () {
+      translateValue.value = 0
+    }
+  }, [translateValue, bottomOffset])
 
-  function remove (key: string) {
-    setSnackbars(snacks => snacks?.filter(_item => _item?._key !== key))
-  }
+  React.useEffect(() => {
+    if (translateValue.value  !== (bottomOffset+extraBottomOffset)) {
+      cancelAnimation(translateValue)
+      translateValue.value = Animated.withTiming((bottomOffset+extraBottomOffset), 
+        { duration: 250 }
+      )
+    } 
+    return function () {
+      translateValue.value = 0
+    }
+  }, [translateValue, bottomOffset, extraBottomOffset])
+
+  const containerAnimStyle = useAnimatedStyle(() => {
+    return { 
+      bottom: translateValue?.value,
+    }
+  })
 
   return (
-    <SnackBarContext.Provider value={{ show, hide, push, snackbarHeight }} >
+    <SnackBarContext.Provider value={{ open, close, snackbarHeight, setBottomOffset, setExtraBottomOffset }} >
         {children}
-        {snackbars?.map((item, index) => (
-            <SnackBar key={`${item?._key}-${index}`} {...item} 
-                dark={dark} 
-                bottom={height => 
-                    (snackbarHeight/2) + (visible ? 20 : 0) // adicionando margin no principal
-                    + ( ( (height / 2) + 20 ) * index ) // adicionando o tamanho + margin
-                    + (typeof item?.bottom === 'number' ? item?.bottom : 0)//offset
-                    + (typeof options?.bottom === 'number' ? options?.bottom : 0 )
-                }
-                onClose={() => {
-                    item?.onClose && item?.onClose()
-                    remove(item?._key)
-                }}
-            />
-        ))}
-        <SnackBar ref={SnackbarRef}
-        onLayout={e => setSnackbarHeight(e?.nativeEvent?.layout?.height)}
-            {...options}
-            dark={dark}
-        />
+        <Animated.View style={[containerAnimStyle]}>
+          <SnackBar ref={snackbarRef}
+              dark={dark}
+              {...snackbarProps}
+              onLayout={onLayout}
+          />
+        </Animated.View>
     </SnackBarContext.Provider>
   )
 }

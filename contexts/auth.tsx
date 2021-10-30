@@ -55,7 +55,7 @@ export const AuthProvider: React.FC = ({ children }) => {
   const [error, setError] = React.useState<errorData>({} as errorData)
 
   React.useEffect(() => { // automatic signIn in init app, to set api header auth
-    if (!!user && !useCanToken()) { signIn(user?.email, user?.password); console.log('ppg- entered') }
+    if (!!user && !useCanToken()) { signIn(user?.email, user?.password); }
   }, [user])
 
   function signVisitor (refresh?: boolean) {
@@ -67,7 +67,6 @@ export const AuthProvider: React.FC = ({ children }) => {
     refresh ? setRefresh(false) : setLoading(false)
   }
 
-  console.log('all users', [...users, visitor]);
 
   async function signIn (email?: string, password?: string, refresh?: boolean) {
     try {

@@ -9,7 +9,7 @@ import * as BundleService from '../../services/bundle';
 import * as StoreService from '../../services/store';
 import * as ProductService from '../../services/product';
 import IconButton from '../../components/IconButton';
-import { NavigationProp, RouteProp, useNavigation, useRoute, useTheme } from '@react-navigation/native';
+import { NavigationProp, RouteProp, useIsFocused, useNavigation, useRoute, useTheme } from '@react-navigation/native';
 import RadioButton from '../../components/RadioButton';
 import useSteeps from '../../hooks/useSteeps'
 import useService from '../../hooks/useService';
@@ -43,6 +43,8 @@ import { MaskService } from 'react-native-masked-text';
 import useProductPrice from '../../hooks/useProductPrice';
 import ProductCard from '../../components/ProductCard';
 import SnackBarContext from '../../contexts/snackbar';
+import SnackBar from '../../components/SnackBar';
+import { setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
 
 
 const initialState = { 
@@ -216,41 +218,24 @@ export default function Bag({
     });
   }, [setEditMode, editMode, selecteds, response]))
 
-  const Snackbar = useContext(SnackBarContext)
+  const snackbar = useSnackbar()
+  const snackbarHeight = useSnackbarHeight()
 
   async function onClear (selecteds: Array<string>) {
     try {
       selecteds.map(onRemove)
       dispatch({type: 'setSelecteds', payload: [] })
       setEditMode(false)
-      Snackbar?.push({
+      snackbar?.open({
         visible: true,
         autoHidingTime: 10000,
         messageColor: colors.text,
         position: "bottom",
-        icon: 'shopping-bag',
-        iconColor: colors.text,
-        // leftComponent: 
-        //   <View style={{ 
-        //     margin: 10, marginRight: 0,
-        //     backgroundColor: colors?.notification, borderRadius: 30, overflow: 'hidden',
-        //     minWidth: 24, maxHeight: 24,
-        //     alignItems: 'center', justifyContent: 'center',
-        //   }}>
-        //     <Text numberOfLines={1} style={{ 
-        //       alignSelf: 'center', textAlign: 'center',
-        //       flex: 1, flexDirection: 'row',
-        //       padding: 5,
-        //       color: 'white',
-        //       fontWeight: '500',
-        //       fontSize: 12,
-        //     }}>{
-        //       selecteds?.map(id => 
-        //         data?.bundles?.find(item => item?._id === id)?.quantity
-        //       )?.reduce((acc, val) => acc+val, 0)
-        //     }</Text>
-        //   </View>
-        // ,
+        badge: selecteds?.map(id => 
+          data?.bundles?.find(item => item?._id === id)?.quantity
+        )?.reduce((acc, val) => acc+val, 0),
+        badgeColor: 'white',
+        badgeBackgroundColor: colors.notification,
         textMessage: selecteds?.map(id => {
           const find = data?.bundles?.find(item => item?._id === id)
           return `${find?.product?.name}`
@@ -310,11 +295,9 @@ export default function Bag({
   }, true)
 
   async function onBulkCreate (items) {
-    console.log('estagio 00000000', items);
     
     const bundles = await Promise.all(items?.map(async item => {
 
-      console.log('estagio 00000000 - 2');
       const find = data?.bundles?.find(_item => _item?._id === item)
       const body = ({
         ...find,
@@ -359,39 +342,43 @@ export default function Bag({
 
   const totalPrice = products?.map(item => useProductPrice(item) * item?.quantity)?.reduce((acc, cur) => acc + cur, 0)
 
-  useFocusEffect(useCallback(() => {
-    Snackbar?.show({
-      // visible: true,
-      messageColor: colors.text,
-      position: "bottom",
-      icon: 'shopping-bag',
-      iconColor: colors.text,
-      bottom,
-      textDirection: 'row',
-      textMessage: MaskService.toMask('money', (totalPrice ? totalPrice : 0) as unknown as string, {
-        precision: 2,
-        separator: ',',
-        delimiter: '.',
-        unit: 'R$ ',
-        suffixUnit: ''
-      }),
-      textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
-      MaskService.toMask('money', data?.store?.minDeliveryBuyValue as unknown as string, {
-        precision: 2,
-        separator: ',',
-        delimiter: '.',
-        unit: 'R$ ',
-        suffixUnit: ''
-      })),
-      // onClose: () => setActionItems([]),
-      actionHandler: () => navigation.navigate('Checkout', { store }),
-      actionText: "AVANÇAR",
-      accentColor: colors.primary,
-    })
-    return () => Snackbar?.hide()
-  }, [totalPrice, bottom]))
+  const setExtraBottomOffset = setSnackExtraBottomOffset()
 
+  useFocusEffect(React.useCallback(() => {
+    if (extraBottom) setExtraBottomOffset(extraBottom+20)
+    return function cleanup () {
+      setExtraBottomOffset(0)
+    }
+  }, [setExtraBottomOffset, extraBottom]))
 
+  // useFocusEffect(useCallback(() => {
+  //   Snackbar?.open({
+  //     visible: true,
+  //     messageColor: colors.text,
+  //     position: "bottom",
+  //     icon: 'shopping-bag',
+  //     iconColor: colors.text,
+  //     textDirection: 'row',
+  //     textMessage: formatedMoney(totalPrice),
+  //     textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+  //     formatedMoney(data?.store?.minDeliveryBuyValue)),
+  //     actionHandler: () => navigation.navigate('Checkout', { store }),
+  //     actionText: "AVANÇAR",
+  //     accentColor: colors.primary,
+  //   })
+  //   return () => Snackbar?.close()
+  // }, [totalPrice]))
+
+  function formatedMoney (value: number = 0) : string {
+    const moneyOptions = {
+      precision: 2,
+      separator: ',',
+      delimiter: '.',
+      unit: 'R$ ',
+      suffixUnit: ''
+    }
+    return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
+  }
 
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('Bag')}/>
@@ -409,9 +396,9 @@ export default function Bag({
           <FlatList style={{ flex: 1 }}
             contentContainerStyle={[
               { flexGrow: 1, backgroundColor: colors.card },
-              { marginTop: top, paddingBottom: bottom+Snackbar?.snackbarHeight },
+              { marginTop: top, paddingBottom: bottom+snackbarHeight },
             ]}
-            scrollIndicatorInsets={{ top, bottom: bottom+Snackbar?.snackbarHeight }}
+            scrollIndicatorInsets={{ top, bottom: bottom+snackbarHeight }}
             ListEmptyComponent={
               <View style={{ padding: 10,flex: 1, width: '100%'  }}>
                   <ContainerButton border transparent
@@ -512,6 +499,23 @@ export default function Bag({
           />
          
       </PullToRefreshView>
+
+      <SnackBar visible
+        onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)}
+        messageColor={colors.text}
+        dark={dark}
+        position={"bottom"}
+        bottom={bottom}
+        icon={'shopping-bag'}
+        iconColor={colors.text}
+        textDirection={'row'}
+        textMessage={formatedMoney(totalPrice)}
+        textSubMessage={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+        formatedMoney(data?.store?.minDeliveryBuyValue))}
+        actionHandler={() => navigation.navigate('Checkout', { store })}
+        actionText={"AVANÇAR"}
+        accentColor={colors.primary}
+      />
       
       {/* <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 
         onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 

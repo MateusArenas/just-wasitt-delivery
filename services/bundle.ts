@@ -49,15 +49,12 @@ export async function search ({ store: storeName, id, userId } : { store: string
 
     const bundle = localData?.bundles?.find(item => item?._id === id) as bundleData
 
-    console.log('estagio 2', bundle?.components);
     
     const { data: _store } = await StoreService.search({ id: localData?.store })
     const store = (_store as unknown as  StoreDate)
-    // console.log('yuyu, bag', localData, bundle, id);
     const { data: _product } = await ProductService.search({ store: store?.name, id: bundle?.product })
     const product = (_product as unknown as  ProductService.ProductData)
 
-    console.log('bum', localData?.bundles);
     
     const components = bundle?.components?.map(component => {
       const byProduct = product?.products?.find(item => item?._id === component?.product)
@@ -91,7 +88,6 @@ export async function search ({ store: storeName, id, userId } : { store: string
     //   return ({ ...bundle, product, components })
     // }))
 
-    console.log('yuyu, bundle', { ...bundle, store, product, components });
 
 
     return Promise.resolve({ ...bundle, store, product, components })
@@ -102,12 +98,9 @@ export async function search ({ store: storeName, id, userId } : { store: string
 
 export async function create ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
   try {
-    console.log('estagio');
     const key = `/${VERSION}/${userId}/bag/stores`
     const localData = await LocalStorage.find(key, storeName)
 
-    console.log('estagio 1', body);
-    
     if (localData) {
       await LocalStorage.update(key, ({ ...localData, bundles: [...localData?.bundles, body] }))
     } else {
@@ -123,9 +116,6 @@ export async function create ({ store: storeName, userId, body } : { store: stri
 export async function update ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
   try {
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, storeName)
-
-    console.log('estagio 1 -- up', body);
-
 
     if(localData) {
       const bundle = localData?.bundles?.find(item => item?._id === body?._id)

@@ -1,11 +1,12 @@
 import { BlurView } from 'expo-blur';
 import { ReactNode } from 'hoist-non-react-statics/node_modules/@types/react';
-import React, { useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { useMemo,useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FlexStyle, View, StyleSheet, ViewStyle, TouchableNativeFeedback, TouchableOpacity, Text, LayoutChangeEvent, useWindowDimensions, ColorValue } from 'react-native';
 import { Platform } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation } from 'react-native-reanimated'
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
+import Badge from '../Badge';
 
 const IS_ANDROID = Platform.OS === 'android';
 const IS_LT_LOLLIPOP = Platform.Version < 21;
@@ -22,7 +23,7 @@ export interface SnackbarComponentProps {
     actionHide?: boolean
     left?: number;
     right?: number;
-    bottom?: number | ((height: number) => number);
+    bottom?: number;
     top?: number;
     position?: 'top' | 'bottom' | 'right' | 'left';
     textMessage?: string;
@@ -34,6 +35,10 @@ export interface SnackbarComponentProps {
     actionStyle?: ViewStyle
     dark?: boolean
     icon?: React.ComponentProps<typeof MaterialIcons>['name']
+    badge?: number
+    badgeColor?: ColorValue
+    badgeBackgroundColor?: ColorValue
+    badgeFontSize?: number
     indicatorIcon?: boolean
     iconColor?: ColorValue
     textDirection?: FlexStyle['flexDirection'],
@@ -67,7 +72,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   left= 0,
   right= 0,
   top= 0,
-  bottom: customBottom= 0,
+  bottom=0,
   visible= false,
   position= 'bottom',
   actionText= '',
@@ -78,20 +83,19 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   messageStyle= {},
   actionStyle= {},
   icon=undefined,
+  badge=undefined,
+  badgeFontSize=12,
+  badgeBackgroundColor='blue',
+  badgeColor='white',
   iconColor='white',
   indicatorIcon=false,
   textDirection='column',
   dark=false,
   onLayout,
 }, ref) => {
-  const [height, setHeight] = React.useState(0)
-  const bottom = typeof customBottom === 'function' ? customBottom(height) : customBottom
-  
-  const pos = { top, bottom, right, left }
+  // const pos = { top, bottom, right, left }
   const timerRef = useRef(null);
 
-
-  const fadeAnimBottom = useSharedValue(bottom);
   const translateValue = useSharedValue(0);
 
   const [hideDistance, setHideDistance] = useState(999)
@@ -101,19 +105,29 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
     close: hideSnackbar
   }));
 
-  const openSnackbar = useCallback(() => {
-    cancelAnimation(translateValue)
-    translateValue.value = Animated.withTiming(1, {
-      duration: durationValues.entry,
-      easing: easingValues.entry,
-    });
+  function openSnackbar () {
+    if (translateValue.value !== 1) {
+      onOpen && onOpen()
+      translateValue.value = Animated.withTiming(1, {
+        duration: durationValues.entry,
+        easing: easingValues.entry,
+      });
+    } else {
+      cancelAnimation(translateValue)
+    }
     if (autoHidingTime) {
       if (timerRef.current) clearTimeout(timerRef.current)
       const hideFunc = hideSnackbar.bind(this);
       timerRef.current = setTimeout(hideFunc, autoHidingTime);
     }
-    onOpen && onOpen()
-  }, [timerRef])
+  }
+
+  React.useEffect(() => {
+    return () => {
+      clearInterval(timerRef.current);
+      timerRef.current = null
+    };
+  }, []);
 
   useEffect( () => {
     if (visible) {
@@ -121,34 +135,45 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
     } else {
       hideSnackbar();
     }
-  }, [visible, autoHidingTime])
+  }, [visible])
 
-  const hideSnackbar = useCallback(() => {
-    cancelAnimation(translateValue)
-    translateValue.value = Animated.withTiming(0, {
-      duration: durationValues.exit,
-      easing: easingValues.exit,
-    })
-    onClose && onClose()
-  }, [])
-
-  useEffect( () => {
-    if (distanceCallback !== null) {
-      if (visible) {
-        distanceCallback(hideDistance + pos[position]);
-      } else {
-        distanceCallback(pos[position]);
-      }
+  function hideSnackbar ()  {
+    if (translateValue.value !== 0 ) {
+      onClose && onClose()
+      translateValue.value = Animated.withTiming(0, {
+        duration: durationValues.exit,
+        easing: easingValues.exit,
+      })
+    } else {
+      cancelAnimation(translateValue)
     }
-  }, [distanceCallback, visible, hideDistance])
+  }
 
-  useEffect(() => {
-    fadeAnimBottom.value = Animated.withTiming(bottom,{
-        duration: durationValues.entry,
-        easing: easingValues.entry,
-      }
-    )
-  }, [bottom])
+  // useEffect( () => {
+  //   if (distanceCallback !== null) {
+  //     if (visible) {
+  //       distanceCallback(hideDistance + pos[position]);
+  //     } else {
+  //       distanceCallback(pos[position]);
+  //     }
+  //   }
+  // }, [distanceCallback, visible, hideDistance])
+
+  // useEffect(() => {
+  //   if (fadeAnimBottom.value  !== bottom) {
+  //     fadeAnimBottom.value = Animated.withTiming(bottom, 
+  //       { duration: durationValues.entry/2 }
+  //     )
+  //   } else {
+  //     cancelAnimation(fadeAnimBottom)
+      
+  //   }
+  //   return function cleanup() {
+  //     fadeAnimBottom.value = 0
+  //     timerRef.current = null;
+  //     translateValue.value = 0
+  //   }
+  // }, [fadeAnimBottom, bottom])
 
 
   const containerAnimStyle = useAnimatedStyle(() => {
@@ -157,7 +182,9 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
         [0, 1],
         [0, hideDistance],
       ),
-      bottom: fadeAnimBottom?.value,
+      bottom: Animated.withTiming(bottom, 
+        { duration: durationValues.entry/2 }
+      ),
     }
   })
 
@@ -183,10 +210,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   })
 
 return (
-      <Animated.View onLayout={e => {
-        onLayout && onLayout(e);
-        setHeight(e?.nativeEvent?.layout?.height)
-      }}
+      <Animated.View 
         style={[
           styles.limitContainer,
           containerAnimStyle,
@@ -206,21 +230,35 @@ return (
               },
               componentAnimStyle,
             ]}
-            onLayout={({ nativeEvent: { layout: { height } } }) => 
+            onLayout={e => {
+              const height = e?.nativeEvent?.layout?.height
               setHideDistance(height ? (height): bottom)
-            }
+              onLayout && onLayout(e)
+            }}
           >
             <BlurView style={[{ borderRadius: 4, overflow: 'hidden', width: '100%' }]} 
               intensity={100} tint={dark ? 'dark' : 'light'}
             >
-        <TouchableOpacity disabled={!onPress} onPress={onPress}>
+        <TouchableOpacity disabled={!onPress} onPress={() => {
+          onPress && onPress()
+          actionHandler && actionHandler()
+          actionHide && hideSnackbar()
+        }}>
               <View style={[styles.innerContainer]}>
                 
-              {!!icon && <MaterialIcons style={{ padding: 10, paddingRight: 0 }} 
+              {(!!icon && !badge) && <MaterialIcons style={{ padding: 10, paddingRight: 0 }} 
                 name={icon} 
                 color={iconColor} 
                 size={24} 
               />}
+                              
+              {(badge) && <Badge style={{ padding: 10, paddingRight: 0 }} 
+                value={badge} 
+                color={badgeColor} 
+                backgroundColor={badgeBackgroundColor} 
+                fontSize={badgeFontSize}
+              />}
+
                 {(
                   <View style={[
                     { flex: 1, padding: 10 },
@@ -250,7 +288,7 @@ return (
                   )
                 }
                 {!!actionText ? (
-                    <Touchable onPress={() => {
+                    <Touchable disabled={onPress} onPress={() => {
                       actionHandler && actionHandler()
                       actionHide && hideSnackbar()
                     }}>
@@ -295,6 +333,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 555,
+    // backgroundColor: 'red',
   },
   container: {
     flexDirection: 'row',
@@ -331,10 +370,11 @@ const styles = StyleSheet.create({
 });
 
 
-const Touchable = ({ onPress, style={}, children }) => {
+const Touchable = ({ disabled, onPress, style={}, children }) => {
   if (IS_ANDROID && !IS_LT_LOLLIPOP) {
     return (
       <TouchableNativeFeedback
+        disabled={disabled}
         background={TouchableNativeFeedback.SelectableBackgroundBorderless()}
         onPress={onPress}
       >
@@ -349,6 +389,7 @@ const Touchable = ({ onPress, style={}, children }) => {
 
   return (
     <TouchableOpacity
+    disabled={disabled}
       onPress={onPress}
       style={style}
     >

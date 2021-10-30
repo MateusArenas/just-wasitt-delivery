@@ -1,4 +1,4 @@
-import { NavigationContainer, DefaultTheme, DarkTheme, useTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, useTheme, useFocusEffect } from '@react-navigation/native';
 import { createStackNavigator, HeaderBackButton, HeaderTitle, StackNavigationOptions, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import * as React from 'react';
 import { ColorSchemeName, SafeAreaView, View, Text, Share } from 'react-native';
@@ -39,7 +39,8 @@ import MakeStore from '../screens/MakeStore';
 import Order from '../screens/Order';
 import Orders from '../screens/Orders';
 import Offers from '../screens/Offers';
-import { SnackBarProvider } from '../contexts/snackbar';
+import SnackBarContext, { SnackBarProvider } from '../contexts/snackbar';
+import { setSnackBottomOffset } from '../hooks/useSnackbar';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
@@ -69,6 +70,15 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 function RootNavigator() {
   const { colors, dark } = useTheme();
+  
+  const setBottomOffset = setSnackBottomOffset()
+  React.useEffect(() => {
+    setBottomOffset(0)
+    // return function cleanup () {
+    //   setBottomOffset(0)
+    // }
+  }, [setBottomOffset])
+
   return (
     <Stack.Navigator initialRouteName={'Root'}
       headerMode={'screen'} mode={'modal'}

@@ -34,7 +34,6 @@ const Product: React.FC<ProductProps> = ({ data, height=250, horizontal, reverse
     (async () => {
       try {
         const response = await FavoriteService.find({ _id: data?._id, userId: user?._id, store })
-        console.log('vers', response);
         setFavorite(!!response)
       } catch (err) {
 
