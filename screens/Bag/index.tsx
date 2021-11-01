@@ -44,7 +44,7 @@ import useProductPrice from '../../hooks/useProductPrice';
 import ProductCard from '../../components/ProductCard';
 import SnackBarContext from '../../contexts/snackbar';
 import SnackBar from '../../components/SnackBar';
-import { setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
 
 
 const initialState = { 
@@ -228,7 +228,7 @@ export default function Bag({
       setEditMode(false)
       snackbar?.open({
         visible: true,
-        autoHidingTime: 10000,
+        autoHidingTime: 5000,
         messageColor: colors.text,
         position: "bottom",
         badge: selecteds?.map(id => 
@@ -342,10 +342,10 @@ export default function Bag({
 
   const totalPrice = products?.map(item => useProductPrice(item) * item?.quantity)?.reduce((acc, cur) => acc + cur, 0)
 
-  const setExtraBottomOffset = setSnackExtraBottomOffset()
+  const setExtraBottomOffset = useSetSnackExtraBottomOffset()
 
   useFocusEffect(React.useCallback(() => {
-    if (extraBottom) setExtraBottomOffset(extraBottom+20)
+    if (extraBottom) setExtraBottomOffset((extraBottom/2)+20)
     return function cleanup () {
       setExtraBottomOffset(0)
     }

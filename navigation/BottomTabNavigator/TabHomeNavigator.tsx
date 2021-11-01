@@ -16,7 +16,7 @@ import SearchTabNavigator from '../SearchTabNavigator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { setSnackBottomOffset } from '../../hooks/useSnackbar';
+import { useSetSnackBottomOffset } from '../../hooks/useSnackbar';
 
 const TabHomeStack = createStackNavigator<TabHomeParamList>()
 
@@ -27,13 +27,13 @@ function TabHomeNavigator({
 
   const bottom = React.useContext(BottomTabBarHeightContext) || 0
 
-  const setBottomOffset = setSnackBottomOffset()
+  const setBottomOffset = useSetSnackBottomOffset()
   useFocusEffect(React.useCallback(() => {
     setBottomOffset(bottom)
 
-    return function cleanup () {
-      setBottomOffset(0)
-    }
+    // return function cleanup () {
+    //   setBottomOffset(0)
+    // }
   }, [bottom, setBottomOffset]))
 
   const InputRef = React.useRef<TextInput>()

@@ -24,7 +24,7 @@ import { writeAndress } from '../../utils';
 import { TextInput } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import SnackBarContext from '../../contexts/snackbar';
-import { setSnackBottomOffset } from '../../hooks/useSnackbar';
+import { useSetSnackBottomOffset } from '../../hooks/useSnackbar';
  
  const BottomTab = createBottomTabNavigator<BottomTabParamList>();
  
@@ -43,7 +43,7 @@ import { setSnackBottomOffset } from '../../hooks/useSnackbar';
 
   const bottom = React.useContext(BottomTabBarHeightContext) || 0
 
-  const setBottomOffset = setSnackBottomOffset()
+  const setBottomOffset = useSetSnackBottomOffset()
   useFocusEffect(React.useCallback(() => {
     setBottomOffset(bottom)
 
@@ -69,7 +69,7 @@ import { setSnackBottomOffset } from '../../hooks/useSnackbar';
         tabBar={props => (
           <BlurView style={[{
             position: 'absolute',
-            bottom: 0, left: 0, right: 0
+            bottom: 0, left: 0, right: 0, zIndex: 2
           }]} intensity={100} tint={dark ? 'dark' : 'light'} >
             <View style={{ width: '100%', height: 2, backgroundColor: colors.border, opacity: .25 }} />
             <BottomTabBar {...props}/>

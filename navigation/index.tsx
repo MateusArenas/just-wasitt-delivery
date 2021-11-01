@@ -40,7 +40,7 @@ import Order from '../screens/Order';
 import Orders from '../screens/Orders';
 import Offers from '../screens/Offers';
 import SnackBarContext, { SnackBarProvider } from '../contexts/snackbar';
-import { setSnackBottomOffset } from '../hooks/useSnackbar';
+import { useSetSnackBottomOffset } from '../hooks/useSnackbar';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
@@ -70,14 +70,6 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 function RootNavigator() {
   const { colors, dark } = useTheme();
-  
-  const setBottomOffset = setSnackBottomOffset()
-  React.useEffect(() => {
-    setBottomOffset(0)
-    // return function cleanup () {
-    //   setBottomOffset(0)
-    // }
-  }, [setBottomOffset])
 
   return (
     <Stack.Navigator initialRouteName={'Root'}

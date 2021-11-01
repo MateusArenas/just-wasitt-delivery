@@ -37,7 +37,7 @@ import { MaskService } from 'react-native-masked-text';
 import useProductPrice from '../../hooks/useProductPrice';
 import SnackBarContext from '../../contexts/snackbar';
 import SnackBar from '../../components/SnackBar';
-import { setSnackBottomOffset, setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useSetSnackBottomOffset, useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
 
 
 function Store({ 
@@ -377,10 +377,10 @@ function Store({
 
   // }, [totalPrice, totalQuantity]))
 
-  const setExtraBottomOffset = setSnackExtraBottomOffset()
+  const setExtraBottomOffset = useSetSnackExtraBottomOffset()
 
   useFocusEffect(React.useCallback(() => {
-    if (extraBottom) setExtraBottomOffset(extraBottom+20)
+    if (extraBottom) setExtraBottomOffset((extraBottom/2)+20)
     return function cleanup () {
       setExtraBottomOffset(0)
     }

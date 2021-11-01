@@ -3,7 +3,7 @@ import { ReactNode } from 'hoist-non-react-statics/node_modules/@types/react';
 import React, { useMemo,useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FlexStyle, View, StyleSheet, ViewStyle, TouchableNativeFeedback, TouchableOpacity, Text, LayoutChangeEvent, useWindowDimensions, ColorValue } from 'react-native';
 import { Platform } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation, useAnimatedGestureHandler } from 'react-native-reanimated'
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
 import Badge from '../Badge';
@@ -148,6 +148,8 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
       cancelAnimation(translateValue)
     }
   }
+
+
 
   // useEffect( () => {
   //   if (distanceCallback !== null) {

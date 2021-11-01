@@ -36,7 +36,7 @@ import ProductCard from '../../components/ProductCard';
 import useLoadScreen from '../../hooks/useLoadScreen';
 import SnackBar from '../../components/SnackBar';
 import SnackBarContext from '../../contexts/snackbar';
-import { setSnackBottomOffset, setSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useSetSnackBottomOffset, useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
 
 
 const initialState = { 
@@ -365,10 +365,10 @@ function Product({
   //   return () => Snackbar?.close()
   // }, [totalPrice, totalQuantity,extraBottom]))
 
-  const setExtraBottomOffset = setSnackExtraBottomOffset()
+  const setExtraBottomOffset = useSetSnackExtraBottomOffset()
 
   useFocusEffect(React.useCallback(() => {
-    if (extraBottom) setExtraBottomOffset((extraBottom+20)+((extraSnackBottom/2)+20))
+    if (extraBottom) setExtraBottomOffset(((extraBottom/2)+20)+((extraSnackBottom/2)+20))
     return function cleanup () {
       setExtraBottomOffset(0)
     }

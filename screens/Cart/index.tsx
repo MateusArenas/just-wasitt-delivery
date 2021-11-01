@@ -373,8 +373,8 @@ const CartBag: React.FC<CartProductProps> = ({
                       })
                     }</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                      {items.slice(0, numberOfItems).map(item => (
-                        <View style={{ position: 'relative' }}>
+                      {items.slice(0, numberOfItems).map((item, index) => (
+                        <View key={index} style={{ position: 'relative' }}>
                           <Image 
                             style={{ margin: 2, height: 38, width: 38, backgroundColor: colors.border, borderRadius: 4 }} 
                             source={{ uri: item?.uri }} 

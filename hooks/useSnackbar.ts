@@ -5,22 +5,20 @@ import { createContext, useContextSelector } from 'use-context-selector';
 export function useSnackbar () {
     const open = useContextSelector(SnackBarContext, snackbar => snackbar.open);
     const close = useContextSelector(SnackBarContext, snackbar => snackbar.close);
-
     return { open, close }
 }
 
 export function useSnackbarHeight () {
     const snackbarHeight = useContextSelector(SnackBarContext, snackbar => snackbar.snackbarHeight);
-    
     return snackbarHeight
 }
 
-export function setSnackBottomOffset () {
+export function useSetSnackBottomOffset () {
     const setBottomOffset = useContextSelector(SnackBarContext, snackbar => snackbar.setBottomOffset);
     return setBottomOffset
 }
 
-export function setSnackExtraBottomOffset () {
+export function useSetSnackExtraBottomOffset () {
     const setExtraBottomOffset = useContextSelector(SnackBarContext, snackbar => snackbar.setExtraBottomOffset);
     return setExtraBottomOffset
 }

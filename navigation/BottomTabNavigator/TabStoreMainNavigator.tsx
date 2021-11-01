@@ -32,7 +32,7 @@ import { FlatList } from 'react-native-gesture-handler';
 import CardLink from '../../components/CardLink';
 import Checkout from '../../screens/Checkout';
 import { BlurView } from 'expo-blur';
-import { setSnackBottomOffset } from '../../hooks/useSnackbar';
+import { useSetSnackBottomOffset } from '../../hooks/useSnackbar';
 
 const Stack = createStackNavigator<TabStoreMainParamList>();
 
@@ -44,13 +44,13 @@ function TabAccountNavigator({
 
   const bottom = React.useContext(BottomTabBarHeightContext) || 0
 
-  const setBottomOffset = setSnackBottomOffset()
+  const setBottomOffset = useSetSnackBottomOffset()
   useFocusEffect(React.useCallback(() => {
     setBottomOffset(bottom)
 
-    return function cleanup () {
-      setBottomOffset(0)
-    }
+    // return function cleanup () {
+    //   setBottomOffset(0)
+    // }
   }, [bottom, setBottomOffset]))
 
   return (
