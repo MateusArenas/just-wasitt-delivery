@@ -25,6 +25,7 @@ import CardLink from '../../components/CardLink';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { MaskService } from 'react-native-masked-text';
 import useProductPrice from '../../hooks/useProductPrice';
+import { useSnackbar } from '../../hooks/useSnackbar';
 // import { Container } from './styles';
 
 export default function Cart({ 
@@ -198,12 +199,67 @@ export default function Cart({
     }
   }
 
+  const snackbar = useSnackbar()
+  
   async function onClear (selecteds: Array<string>) {
     try {
       selecteds.map(onRemove)
       setSelecteds([])
       setEditMode(false)
+      snackbar?.open({
+        visible: true,
+        autoHidingTime: 5000,
+        messageColor: colors.text,
+        position: "bottom",
+        badge: selecteds?.map(id => 
+          response?.data?.find(item => item?._id === id)?.bundles?.map(item => item?.quantity)?.reduce((acc,val) => acc+val)
+        )?.reduce((acc, val) => acc+val, 0),
+        badgeColor: 'white',
+        badgeBackgroundColor: colors.notification,
+        textMessage: selecteds?.map(id => {
+          const find = response?.data?.find(item => item?._id === id)
+          return `${find?.store?.name}`
+        })?.join(', '),
+        // onClose: () => setActionItems([]),
+        actionHide: true,
+        actionHandler: () => onBulkCreate(selecteds),
+        actionText: "DESFAZER",
+        accentColor: colors.primary,
+      })
     } catch (err) {}
+  }
+
+  async function onBulkCreate (items) {
+    
+    const bundles = await Promise.all(items?.map(async item => {
+
+      const find = response?.data?.find(_item => _item?._id === item)
+      const bundles = find?.bundles?.map(item => ({
+        ...item,
+        product: item?.product?._id,
+        store: item?.store?._id,
+        components: item?.components?.map(byItem => ({
+          ...byItem,
+          product: byItem?.product?._id,
+          components: item?.components?.map(subItem => ({
+            ...subItem,
+            product: subItem?.product?._id,
+          }))
+        })),
+      }))
+
+      const body: BagService.bagData = ({
+        ...find,
+        bundles,
+        store: find?.store?._id,
+        user: user?._id
+      })
+
+      await BagService.create({ userId: user?._id, body })
+
+      return find
+    })) 
+    onRefresh()
   }
 
   async function onRemove (store: string) {
@@ -214,7 +270,7 @@ export default function Cart({
           return response.data?.filter(item => item?.store?.name !== store)
         } catch (err) {}
       })
-      rootNavigation.refresh('Root')
+      // rootNavigation.refresh('Root')
     } catch (err) {}
   }
 

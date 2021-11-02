@@ -12,6 +12,8 @@ interface SnackBarData {
   close: () => any
 }
 
+const duration = 250;
+
 const SnackBarContext = createContext<SnackBarData>({} as SnackBarData)
 
 export const SnackBarProvider: React.FC = ({ children }) => {
@@ -30,13 +32,7 @@ export const SnackBarProvider: React.FC = ({ children }) => {
   const open = React.useCallback(props => {
     setSnackbarProps(props)
     snackbarRef?.current?.open()
-
-    if (translateValue.value  !== totalOffset) {
-      cancelAnimation(translateValue)
-      translateValue.value = withTiming(totalOffset, 
-        { duration: 250 }
-      )
-    }
+    translateValue.value = withTiming(totalOffset, { duration })
   }, [translateValue, totalOffset])
 
   const close = React.useCallback(() => {
@@ -76,8 +72,6 @@ export const SnackBarProvider: React.FC = ({ children }) => {
   useAnimatedReaction(() => {
     return translateValue.value;
   }, (result, previous) => {
-    if (result === previous) return 
-    
     if (result <= -(snackbarHeight/2)) {
         runOnJS(close)()
     }

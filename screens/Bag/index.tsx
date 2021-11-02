@@ -219,7 +219,6 @@ export default function Bag({
   }, [setEditMode, editMode, selecteds, response]))
 
   const snackbar = useSnackbar()
-  const snackbarHeight = useSnackbarHeight()
 
   async function onClear (selecteds: Array<string>) {
     try {
@@ -396,9 +395,9 @@ export default function Bag({
           <FlatList style={{ flex: 1 }}
             contentContainerStyle={[
               { flexGrow: 1, backgroundColor: colors.card },
-              { marginTop: top, paddingBottom: bottom+snackbarHeight },
+              { marginTop: top, paddingBottom: bottom },
             ]}
-            scrollIndicatorInsets={{ top, bottom: bottom+snackbarHeight }}
+            scrollIndicatorInsets={{ top, bottom: bottom }}
             ListEmptyComponent={
               <View style={{ padding: 10,flex: 1, width: '100%'  }}>
                   <ContainerButton border transparent
