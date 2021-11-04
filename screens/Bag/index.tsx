@@ -45,6 +45,7 @@ import ProductCard from '../../components/ProductCard';
 import SnackBarContext from '../../contexts/snackbar';
 import SnackBar from '../../components/SnackBar';
 import { useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useBag, useBundle } from '../../hooks/useBag';
 
 
 const initialState = { 
@@ -100,30 +101,35 @@ export default function Bag({
     money: 0,
   })
 
-  const SnackBarRef = useRef(null)
-
   const rootNavigation = useRootNavigation()
   const [editMode, setEditMode] = React.useState(false)
   
-  const { 
-    disabled,
-    loading,
-    response,
-    refreshing,
-    onLoading,
-    onRefresh,
-    onService,
-  } = useLoadScreen<BagService.bagData>(async () => await BagService.search({ id: store, userId: user?._id }))
-  useEffect(() => { if(!!user) onLoading() }, [user])
-  const data: BagService.bagData = response?.data[0]
+  // const { 
+  //   disabled,
+  //   loading,
+  //   response,
+  //   refreshing,
+  //   onLoading,
+  //   onRefresh,
+  //   onService,
+  // } = useLoadScreen<BagService.bagData>(async () => await BagService.search({ id: store, userId: user?._id }))
+  // useFocusEffect(React.useCallback(() => { if(!!user) onLoading() }, [user]))
+  // const data: BagService.bagData = response?.data[0]
 
-  useEffect(() => { setProducts(data?.bundles) } ,[response, setProducts])
+  
+  const { data, loading, missing, refreshing, onRefresh } = useBag(//select
+    data => data?.find(item => (item?._id === store && item?.user === user?._id) )
+  )
 
+  const { onCreateBundle, onRemoveBundle , onUpdateBundle } = useBundle()
+
+  useEffect(() => { setProducts(data?.bundles) } ,[data])
+    
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
-  useEffect(() => {
-    if (loading) setEditMode(false)
-  }, [loading])
+  // useEffect(() => {
+  //   if (loading) setEditMode(false)
+  // }, [loading])
 
 
   useFocusEffect(React.useCallback(() => {
@@ -216,13 +222,14 @@ export default function Bag({
         }}/> 
       : props.canGoBack && <HeaderBackButton {...props} />,
     });
-  }, [setEditMode, editMode, selecteds, response]))
+  }, [setEditMode, editMode, selecteds, data]))
 
   const snackbar = useSnackbar()
 
   async function onClear (selecteds: Array<string>) {
     try {
-      selecteds.map(onRemove)
+      const items = selecteds?.map(id => products?.find(item => item?._id === id))
+      await Promise.all(selecteds.map(id => onRemoveBundle({ store, id, userId: user?._id })))
       dispatch({type: 'setSelecteds', payload: [] })
       setEditMode(false)
       snackbar?.open({
@@ -239,42 +246,17 @@ export default function Bag({
           const find = data?.bundles?.find(item => item?._id === id)
           return `${find?.product?.name}`
         })?.join(', '),
-        textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
-        MaskService.toMask('money', data?.store?.minDeliveryBuyValue as unknown as string, {
-          precision: 2,
-          separator: ',',
-          delimiter: '.',
-          unit: 'R$ ',
-          suffixUnit: ''
-        })),
-        // onClose: () => setActionItems([]),
         actionHide: true,
-        actionHandler: () => onBulkCreate(selecteds),
+        actionHandler: () => onRestore(items),
         actionText: "DESFAZER",
         accentColor: colors.primary,
       })
     } catch (err) {}
   }
-
-
-
-  async function onRemove (_id :string ) {
-    try {
-      await onService(async () => {
-        try {
-          await BundleService.remove({ store, id: _id, userId: user?._id })
-          const bundles = data?.bundles?.filter(item => item?._id !== _id)
-          return [{ ...data, bundles }]
-        } catch (err) {}
-      }, true)
-      // rootNavigation.refresh('Root')
-    } catch (err) {}
-  }
-
   
-  const onUpdate = (_item, quantity) => onService(async () => {
+  const onUpdate = async (_item, quantity) => {
     try {
-      await BundleService.update({ store, userId: user?._id, body: {
+      await onUpdateBundle({ store, userId: user?._id}, {
         ..._item,
         quantity,
         product: _item?.product?._id,
@@ -286,37 +268,30 @@ export default function Bag({
             product: subItem?.product?._id,
           }))
         }))
-      } })
-      const bundles = data?.bundles?.map(item => item?._id === _item?._id ? ({..._item, quantity}) : item)
-
-      return [{ ...data, bundles }]
+        } )
     } catch (err) {}
-  }, true)
-
-  async function onBulkCreate (items) {
-    
-    const bundles = await Promise.all(items?.map(async item => {
-
-      const find = data?.bundles?.find(_item => _item?._id === item)
-      const body = ({
-        ...find,
-        product: find?.product?._id,
-        store: find?.store?._id,
-        components: find?.components?.map(byItem => ({
-          ...byItem,
-          product: byItem?.product?._id,
-          components: find?.components?.map(subItem => ({
-            ...subItem,
-            product: subItem?.product?._id,
-          }))
-        })),
-      })
-
-      await BundleService.create({  store, userId: user?._id, body })
-
-      return find
-    })) 
-    onRefresh()
+  }
+  
+  const onRestore = async (items) => {//arrumar
+    try {
+      await Promise.all(items?.map(async item => {
+        const body = ({
+          ...item,
+          product: item?.product?._id,
+          store: item?.store?._id,
+          components: item?.components?.map(byItem => ({
+            ...byItem,
+            product: byItem?.product?._id,
+            components: item?.components?.map(subItem => ({
+              ...subItem,
+              product: subItem?.product?._id,
+            }))
+          })),
+        })
+        await onCreateBundle({  store, userId: user?._id }, body )
+        return item
+      })) 
+    } catch (err) {}
   }
 
   useEffect(() => { 
@@ -350,24 +325,6 @@ export default function Bag({
     }
   }, [setExtraBottomOffset, extraBottom]))
 
-  // useFocusEffect(useCallback(() => {
-  //   Snackbar?.open({
-  //     visible: true,
-  //     messageColor: colors.text,
-  //     position: "bottom",
-  //     icon: 'shopping-bag',
-  //     iconColor: colors.text,
-  //     textDirection: 'row',
-  //     textMessage: formatedMoney(totalPrice),
-  //     textSubMessage: !data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
-  //     formatedMoney(data?.store?.minDeliveryBuyValue)),
-  //     actionHandler: () => navigation.navigate('Checkout', { store }),
-  //     actionText: "AVANÇAR",
-  //     accentColor: colors.primary,
-  //   })
-  //   return () => Snackbar?.close()
-  // }, [totalPrice]))
-
   function formatedMoney (value: number = 0) : string {
     const moneyOptions = {
       precision: 2,
@@ -380,14 +337,14 @@ export default function Bag({
   }
 
   if (loading) return <Loading />
-  if (!response.network) return <Refresh onPress={() => navigation.replace('Bag')}/>
-  if (!response.ok) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
+  // if (!response.network) return <Refresh onPress={() => navigation.replace('Bag')}/>
+  if (missing) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
     <View style={{ flex: 1, paddingBottom: bottom }}>
       <PullToRefreshView
         offset={top}
-        disabled={editMode || disabled}
+        disabled={editMode || loading || refreshing}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -395,9 +352,9 @@ export default function Bag({
           <FlatList style={{ flex: 1 }}
             contentContainerStyle={[
               { flexGrow: 1, backgroundColor: colors.card },
-              { marginTop: top, paddingBottom: bottom },
+              { marginTop: top, paddingBottom: bottom+extraBottom },
             ]}
-            scrollIndicatorInsets={{ top, bottom: bottom }}
+            scrollIndicatorInsets={{ top, bottom: bottom+extraBottom }}
             ListEmptyComponent={
               <View style={{ padding: 10,flex: 1, width: '100%'  }}>
                   <ContainerButton border transparent

@@ -37,6 +37,7 @@ import useLoadScreen from '../../hooks/useLoadScreen';
 import SnackBar from '../../components/SnackBar';
 import SnackBarContext from '../../contexts/snackbar';
 import { useSetSnackBottomOffset, useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useBag, useBundle } from '../../hooks/useBag';
 
 
 const initialState = { 
@@ -49,6 +50,8 @@ function reducer(state: Partial<BundleService.bundleData>, action) {
   switch (action.type) {
     case 'init':
       return { ...state, ...action?.payload };
+    case 'set':
+      return { ...action?.payload };
     // case 'quantity':
     //   return { count: state.count - 1 };
     default:
@@ -89,7 +92,6 @@ function Product({
 
   const data = response?.data[0]
 
-  
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       title: store,
@@ -205,35 +207,26 @@ function Product({
   }, [data]))
 
 
-  const BundleResponse = useService<BundleService.bundleData>(BundleService, 
-    'search', { store, userId: user?._id, id: data?._id }
-  , [user, data])
- 
-  const BagResponse = useService<BagService.bagData>(BagService)
+  const bagResponse = useBag(//select
+    data => data?.find(item => (item?._id === store && item?.user === user?._id) )
+  )
 
-  useFocusEffect(useCallback(() => { 
-    BagResponse?.onService('search', { id: store, userId: user?._id }) 
-  }, [user]))
-
-  useEffect(() => { 
-    BagResponse?.onService('search', { id: store, userId: user?._id }) 
-  }, [up, user])
-
-  const totalPrice = BagResponse?.response?.data[0]?.bundles?.map(bundle => {
+  const totalPrice = bagResponse?.data?.bundles?.map(bundle => {
     return useProductPrice(bundle) * bundle?.quantity
   })?.reduce((acc, cur) => acc + cur, 0) 
-  const totalQuantity = BagResponse?.response?.data[0]?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
+  const totalQuantity = bagResponse?.data?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
 
-
-  const local = BundleResponse?.response?.data[0]
+  const bundleResponse = useBundle(
+    data => data?.find(item => (item?._id === store && item?.user === user?._id) )
+    ?.bundles?.find(item => (item?._id === id && item?.user === user?._id) )
+  ) 
 
   useEffect(() => {
     (async () => {
       try {
         if (data) {
           // load initial
-          dispatch({ type: 'init', payload: {
-            ...state, 
+          dispatch({ type: 'set', payload: {
             product: id,
             store: data?.store?._id,
             user: user?._id,
@@ -247,13 +240,17 @@ function Product({
               }))
             }))
           } })
-          //load cart
 
-          if (local) {
-            dispatch({ type: 'init', payload: {
-              ...state, 
-              ...local,
-              components: local?.components?.map(item => ({
+          console.log('mateus', bundleResponse?.data?._id);
+          
+          if (bundleResponse?.data) {
+            dispatch({ type: 'set', payload: {
+              ...initialState,
+              // ...bundleResponse?.data,
+              _id: bundleResponse?.data?._id,
+              quantity: bundleResponse?.data?.quantity, 
+              comment: bundleResponse?.data?.comment,
+              components: bundleResponse?.data?.components?.map(item => ({
                 ...item,
                 product: item?.product?._id,
                 components: item?.components?.map(subItem => ({
@@ -262,54 +259,19 @@ function Product({
                 }))
               }))
             } })
+          } else {
+            dispatch({ type: 'init', payload: { _id: undefined } })
           }
           
         }
       } catch (err) {}
     })()
-  } ,[user, data, dispatch, local])
+  } ,[user, data, bundleResponse?.data])
 
-  const saveToCart = async ({ quantity, comment }) => {
-    try {
-      await BundleService.create({ store, userId: user?._id, body: { 
-        _id: id, 
-        store: data?.store?._id,
-        product: id, 
-        user: user?._id, 
-        components: state?.components,
-        quantity, 
-        comment,
-      } })
-      setUp(false)
-      dispatch({ type: 'init', payload: { ...state, quantity, comment } })
-      // navigation.replace('Store', { store })
-    } catch (err) {}
-  }
-
-  const onRemove = async () => {
-    if (data?._id) await BundleService.remove({ store, id: data?._id, userId: user?._id })
-    // navigation.replace('Store', { store })
-  }
-
-  const onUpdate = async ({ quantity, comment }) => {
-    try {
-      await BundleService.update({ store, userId: user?._id, body: { 
-        _id: id, 
-        store: data?.store?._id,
-        product: id, 
-        user: user?._id, 
-        components: state?.components,
-        quantity, 
-        comment,
-      } })
-      setUp(false)
-      // setState(state => ({ ...state, quantity, comment }))
-      dispatch({ type: 'init', payload: { ...state, quantity, comment } })
-    } catch (err) {}
-  }
-
-  const bundle = {
+  const bundle = React.useMemo(() => ({
     ...state,
+    user: user?._id,
+    store: data?.store,
     product: data,
     components: state?.components?.map(byItem => ({
       ...byItem,
@@ -320,6 +282,86 @@ function Product({
           ?.products?.find(item => item?._id === subItem?.product)
       })) 
     }))
+  }), [state, data])
+
+  const saveToCart = async ({ quantity, comment }) => {
+    console.log('on save');
+    try {
+      await bundleResponse?.onCreateBundle({ store, userId: user?._id }, { 
+        _id: id, 
+        store: data?.store?._id,
+        product: id, 
+        user: user?._id, 
+        components: state?.components,
+        quantity, 
+        comment,
+      })
+
+      setUp(false)
+      dispatch({ type: 'init', payload: { _id: id, quantity, comment } })
+    } catch (err) {}
+  }
+  
+  const snackbar = useSnackbar()
+
+  const onRemove = async () => {
+    try {
+      await bundleResponse?.onRemoveBundle({ store, userId: user?._id, id })
+      dispatch({ type: 'init', payload: { _id: undefined, quantity: 1, comment: '' } })
+      setUp(false)
+      snackbar?.open({
+        visible: true,
+        autoHidingTime: 5000,
+        messageColor: colors.text,
+        position: "bottom",
+        badge: bundleResponse?.data?.quantity,
+        badgeColor: 'white',
+        badgeBackgroundColor: colors.notification,
+        textMessage: data?.name,
+        actionHide: true,
+        actionHandler: () => onRestore([bundleResponse?.data]),
+        actionText: "DESFAZER",
+        accentColor: colors.primary,
+      })      
+    } catch (err) {}
+  }
+
+  const onRestore = async (items) => {//arrumar
+    try {
+      await Promise.all(items?.map(async item => {
+        const body = ({
+          ...item,
+          product: item?.product?._id,
+          store: item?.store?._id,
+          components: item?.components?.map(byItem => ({
+            ...byItem,
+            product: byItem?.product?._id,
+            components: item?.components?.map(subItem => ({
+              ...subItem,
+              product: subItem?.product?._id,
+            }))
+          })),
+        })
+        await bundleResponse.onCreateBundle({  store, userId: user?._id }, body )
+        return item
+      })) 
+    } catch (err) {}
+  }
+
+  const onUpdate = async ({ quantity, comment }) => {
+    try {
+      await bundleResponse?.onUpdateBundle({ store, userId: user?._id }, { 
+        _id: id, 
+        store: data?.store?._id,
+        product: id, 
+        user: user?._id, 
+        components: state?.components,
+        quantity, 
+        comment,
+      })
+      setUp(false)
+      dispatch({ type: 'init', payload: { _id: id, quantity, comment } })
+    } catch (err) {}
   }
 
   const additionals = useProductAdditionals(bundle)
@@ -327,18 +369,17 @@ function Product({
   const total = useProductPrice(bundle) * bundle?.quantity
 
   function handleComment (comment) {
-    setUp(local?.comment !== comment)
+    setUp(bundleResponse.data?.comment !== comment)
     dispatch({ type: 'init', payload: { comment } })
   }
 
   function handleQuantity (quantity) {
-    setUp(local?.quantity !== quantity)
+    setUp(bundleResponse.data?.quantity !== quantity)
     dispatch({ type: 'init', payload: { quantity } })
   }
 
   function handleAddQuantity (id: string, body: Partial<BundleService.componentData>) {
     setUp(true)
-
     dispatch({ type: 'init', payload: { ...state, components: [
         ...state?.components?.map(item => 
           item?.product !== id ? item : { ...item, ...body }
@@ -346,24 +387,6 @@ function Product({
       ] 
     } })
   }
-
-  // const Snackbar = useContext(SnackBarContext)
-
-  // useFocusEffect(useCallback(() => {
-  //   if (extraBottom) Snackbar?.open({
-  //     onPress: () => navigation.navigate('Bag', { store }),
-  //     messageColor: colors.text,
-  //     position: "bottom",
-  //     bottom: ((extraBottom/2) + 20),
-  //     icon: 'shopping-bag',
-  //     iconColor: colors.text,
-  //     textMessage: formatedMoney(totalPrice),
-  //     indicatorIcon: true,
-  //     actionText: `${totalQuantity}`,
-  //     accentColor: colors.primary,
-  //   })
-  //   return () => Snackbar?.close()
-  // }, [totalPrice, totalQuantity,extraBottom]))
 
   const setExtraBottomOffset = useSetSnackExtraBottomOffset()
 
@@ -387,13 +410,13 @@ function Product({
 
   if (loading === 'LOADING') return <Loading />
   if (error === 'NETWORK') return <Refresh onPress={() => navigation.replace('Product', { store, id })}/>
-  if (error === 'NOT_FOUND') return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
-
+  if (error === 'NOT_FOUND') return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
+  
   return (
     <View style={{ flex: 1 }}>
       <PullToRefreshView
         offset={top}
-        disabled={!refreshed}
+        disabled={loading === 'REFRESHING'}
         refreshing={loading === 'REFRESHING'}
         onRefresh={() => onRefresh('search', { store, id })}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -564,7 +587,11 @@ function Product({
             right={
               <View style={{ width: '33.33%', alignItems: 'flex-end', padding: 10 }}>
                 <TextButton style={{ padding: 0 }} textTransform={'uppercase'}
-                  label={!state?._id ? 'Adicionar' : up ? 'Salvar' : 'Remover'}
+                  label={
+                    !state?._id ? 'Adicionar' 
+                    : up ? 'Salvar' 
+                    : 'Remover'
+                  }
                   color={(!state?._id || up) ? colors.primary : colors.notification}
                   fontSize={16}
                   disabled={!data?.single && (total / state?.quantity) > additionals}

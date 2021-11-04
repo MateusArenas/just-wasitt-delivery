@@ -26,6 +26,7 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { MaskService } from 'react-native-masked-text';
 import useProductPrice from '../../hooks/useProductPrice';
 import { useSnackbar } from '../../hooks/useSnackbar';
+import { useBag } from '../../hooks/useBag';
 // import { Container } from './styles';
 
 export default function Cart({ 
@@ -43,16 +44,19 @@ export default function Cart({
   const [editMode, setEditMode] = React.useState(false)
   const { colors } = useTheme()
   const { user } = React.useContext(AuthContext)
-  const { 
-    response, 
-    loading, 
-    disabled,
-    refreshing,
-    onLoading,
-    onService, 
-    onRefresh 
-  } = useLoadScreen<BagService.bagData>(React.useCallback(async () => await BagService.index({ userId: user?._id }), [user]))
-  useFocusEffect(useCallback(() => { onLoading() }, [user]))
+
+  const { data, loading, refreshing, missing, onRefresh, onRemoveBag, onCreateBag } = useBag() 
+
+  // const { 
+  //   response, 
+  //   loading, 
+  //   disabled,
+  //   refreshing,
+  //   onLoading,
+  //   onService, 
+  //   onRefresh 
+  // } = useLoadScreen<BagService.bagData>(React.useCallback(async () => await BagService.index({ userId: user?._id }), [user]))
+  // useFocusEffect(useCallback(() => { onLoading() }, [user]))
 
   useScrollToTop(ref)
 
@@ -86,13 +90,13 @@ export default function Cart({
       ,
       headerRight: ({ tintColor }) => (
         <View style={{ flexDirection: 'row', paddingHorizontal: 10 }}>
-          {response?.data?.length > 0 &&
+          {data?.length > 0 &&
           <TextButton 
             label={editMode ? selecteds.length > 0 ? 'Fazer' : 'Tudo' : 'Editar'}
             fontSize={18}
             color={colors.primary}
             onPress={() => (editMode && selecteds.length === 0) ? 
-              setSelecteds(response?.data?.map(item => item?.store?.name))
+              setSelecteds(data?.map(item => item?.store?.name))
               : setEditMode(true)
             }
             onPressed={() => (editMode && selecteds.length > 0) &&  BottomHalfModal.show(modalize => 
@@ -189,7 +193,7 @@ export default function Cart({
         }}/> 
       : props.canGoBack && <HeaderBackButton {...props} />,
     });
-  }, [setEditMode, editMode, setSelecteds, selecteds, response]))
+  }, [setEditMode, editMode, setSelecteds, selecteds, data]))
 
   function onSelected (id: string) {
     if (selecteds?.find(item => item === id)) {
@@ -203,7 +207,8 @@ export default function Cart({
   
   async function onClear (selecteds: Array<string>) {
     try {
-      selecteds.map(onRemove)
+      const items = selecteds?.map(id => data?.find(item => item?._id === id))
+      selecteds.map(id => onRemoveBag({ id, userId: user?._id }))
       setSelecteds([])
       setEditMode(false)
       snackbar?.open({
@@ -212,29 +217,27 @@ export default function Cart({
         messageColor: colors.text,
         position: "bottom",
         badge: selecteds?.map(id => 
-          response?.data?.find(item => item?._id === id)?.bundles?.map(item => item?.quantity)?.reduce((acc,val) => acc+val)
+          data?.find(item => item?._id === id)?.bundles?.map(item => item?.quantity)?.reduce((acc,val) => acc+val)
         )?.reduce((acc, val) => acc+val, 0),
         badgeColor: 'white',
         badgeBackgroundColor: colors.notification,
         textMessage: selecteds?.map(id => {
-          const find = response?.data?.find(item => item?._id === id)
+          const find = data?.find(item => item?._id === id)
           return `${find?.store?.name}`
         })?.join(', '),
         // onClose: () => setActionItems([]),
         actionHide: true,
-        actionHandler: () => onBulkCreate(selecteds),
+        actionHandler: () => onRestore(items),
         actionText: "DESFAZER",
         accentColor: colors.primary,
       })
     } catch (err) {}
   }
 
-  async function onBulkCreate (items) {
-    
-    const bundles = await Promise.all(items?.map(async item => {
+  const onRestore = async (items) => {
+    await Promise.all(items?.map(async _item => {
 
-      const find = response?.data?.find(_item => _item?._id === item)
-      const bundles = find?.bundles?.map(item => ({
+      const bundles = _item?.bundles?.map(item => ({
         ...item,
         product: item?.product?._id,
         store: item?.store?._id,
@@ -249,40 +252,40 @@ export default function Cart({
       }))
 
       const body: BagService.bagData = ({
-        ...find,
+        ..._item,
         bundles,
-        store: find?.store?._id,
+        store: _item?.store?._id,
         user: user?._id
       })
 
-      await BagService.create({ userId: user?._id, body })
+      await onCreateBag({ userId: user?._id}, body )
 
-      return find
+      return _item
     })) 
-    onRefresh()
   }
 
-  async function onRemove (store: string) {
-    try {
-      await onService(async () => {
-        try {
-          await BagService.remove({ id: store, userId: user?._id })
-          return response.data?.filter(item => item?.store?.name !== store)
-        } catch (err) {}
-      })
-      // rootNavigation.refresh('Root')
-    } catch (err) {}
-  }
+  // async function onRemove (store: string) {
+  //   onRemoveBag({ id: store, userId: user?._id })
+  //   // try {
+  //   //   await onService(async () => {
+  //   //     try {
+  //   //       await BagService.remove({ id: store, userId: user?._id })
+  //   //       return response.data?.filter(item => item?.store?.name !== store)
+  //   //     } catch (err) {}
+  //   //   })
+  //   //   // rootNavigation.refresh('Root')
+  //   // } catch (err) {}
+  // }
 
   if (loading) return <Loading />
-  if (!response.network) return <Refresh onPress={() => navigation.replace('TabCart')}/>
-  if (!response.ok) return <NotFound title={`Não há nenhum pedido.`} redirectText={`Vá para tela de inicio!`}/>
+  // if (!response.network) return <Refresh onPress={() => navigation.replace('TabCart')}/>
+  if (missing) return <NotFound title={`Não há nenhum pedido.`} redirectText={`Vá para tela de inicio!`}/>
 
   return (
     <View style={{ flex: 1 }}>
         <PullToRefreshView
           offset={top}
-          disabled={editMode || disabled}
+          disabled={editMode || loading || refreshing}
           refreshing={refreshing}
           onRefresh={onRefresh}
           style={{ flex: 1, backgroundColor: colors.background }}
@@ -290,7 +293,7 @@ export default function Cart({
           <FlatList style={{ flex: 1 }} ref={ref}
             ListEmptyComponent={
               loading ? <Loading /> :
-              response?.data?.length === 0 && <View style={{ 
+              data?.length === 0 && <View style={{ 
                 flex: 1, alignItems: 'center', justifyContent: 'center'
               }}>
                 <Text style={{ 
@@ -334,7 +337,7 @@ export default function Cart({
                 style={{ flex: 1 }}
               />
             }
-            data={response?.data}
+            data={data}
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             renderItem={({ item } : { item: BagService.bagData }) => (
               <CartBag 

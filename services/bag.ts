@@ -14,7 +14,7 @@ export interface bagData {
   bundles: Array<bundleData>
 }
 
-const VERSION = '4.7'
+const VERSION = '5.2'
 
 export async function index ({ userId } : { userId: string }) : Promise<AxiosResponse<Array<bagData>>> {
   try {
@@ -88,21 +88,25 @@ export async function search ({ id, userId } : { id: string, userId: string }) :
   } 
 }
 
-export async function create ({ userId, body } : { userId: string, body: Partial<bagData> } ) : Promise<boolean> {
+export async function create ({ userId, body } : { userId: string, body: Partial<bagData> } ) : Promise<bagData> {
   try {
     await LocalStorage.create(`/${VERSION}/${userId}/bag/stores`, body)
-    return Promise.resolve(true)
+
+    const data = search({ userId, id: body?._id })
+    return Promise.resolve(data)
   } catch(err) {
-    return Promise.reject(false)
+    return Promise.reject(null)
   } 
 }
 
-export async function update ({ userId, body } : { userId: string, body: bagData } ) : Promise<boolean> {
+export async function update ({ userId, body } : { userId: string, body: bagData } ) : Promise<bagData> {
   try {
     await LocalStorage.update(`/${VERSION}/${userId}/bag/stores`, body)
-    return Promise.resolve(true)
+
+    const data = search({ userId, id: body?._id })
+    return Promise.resolve(data)
   } catch(err) {
-    return Promise.reject(false)
+    return Promise.reject(null)
   } 
 }
 

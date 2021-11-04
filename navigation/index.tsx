@@ -41,24 +41,27 @@ import Orders from '../screens/Orders';
 import Offers from '../screens/Offers';
 import SnackBarContext, { SnackBarProvider } from '../contexts/snackbar';
 import { useSetSnackBottomOffset } from '../hooks/useSnackbar';
+import { BagProvider } from '../contexts/bag';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
       <ThemeProvider theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}>
         <AuthProvider>
-          <AndressProvider>
-            <NavigationContainer
-              linking={LinkingConfiguration}
-              theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}
-              fallback={Loading}
-            >
-              <SnackBarProvider>
-                <BottomHalfModalProvider>
-                  <RootNavigator />
-                </BottomHalfModalProvider>
-              </SnackBarProvider>
-            </NavigationContainer>
-          </AndressProvider>
+          <BagProvider>
+            <AndressProvider>
+              <NavigationContainer
+                linking={LinkingConfiguration}
+                theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}
+                fallback={Loading}
+              >
+                <SnackBarProvider>
+                  <BottomHalfModalProvider>
+                    <RootNavigator />
+                  </BottomHalfModalProvider>
+                </SnackBarProvider>
+              </NavigationContainer>
+            </AndressProvider>
+          </BagProvider>
         </AuthProvider>
       </ThemeProvider>
   );

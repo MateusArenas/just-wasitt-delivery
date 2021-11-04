@@ -21,7 +21,7 @@ export interface bundleData {
   comment?: string
 }
 
-const VERSION = '4.7'
+const VERSION = '5.2'
 
 export async function index ({ store: storeName, userId } : { store: string, userId: string }) : Promise<AxiosResponse<Array<bundleData>>> {
   try {
@@ -96,7 +96,7 @@ export async function search ({ store: storeName, id, userId } : { store: string
   } 
 }
 
-export async function create ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
+export async function create ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<bundleData> {
   try {
     const key = `/${VERSION}/${userId}/bag/stores`
     const localData = await LocalStorage.find(key, storeName)
@@ -107,13 +107,14 @@ export async function create ({ store: storeName, userId, body } : { store: stri
       await LocalStorage.create(key, ({ _id: storeName, user: userId, store: body?.store, bundles: [body] }))
     }
 
-    return Promise.resolve(true)
+    const data = await search({ store: storeName, userId, id: body?._id })
+    return Promise.resolve(data)
   } catch(err) {
-    return Promise.reject(false)
+    return Promise.reject(null)
   } 
 }
 
-export async function update ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<boolean> {
+export async function update ({ store: storeName, userId, body } : { store: string, userId: string, body: Partial<bundleData> } ) : Promise<bundleData> {
   try {
     const localData = await LocalStorage.find(`/${VERSION}/${userId}/bag/stores`, storeName)
 
@@ -123,11 +124,13 @@ export async function update ({ store: storeName, userId, body } : { store: stri
   
       await LocalStorage.update(`/${VERSION}/${userId}/bag/stores`, ({ ...localData, bundles }))
     } else {
-      Promise.resolve(false)
+      Promise.resolve(null)
     }
-    return Promise.resolve(true)
+
+    const data = await search({ store: storeName, userId, id: body?._id })
+    return Promise.resolve(data)
   } catch(err) {
-    return Promise.reject(false)
+    return Promise.reject(null)
   } 
 }
 

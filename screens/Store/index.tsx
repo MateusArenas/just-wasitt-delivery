@@ -38,6 +38,7 @@ import useProductPrice from '../../hooks/useProductPrice';
 import SnackBarContext from '../../contexts/snackbar';
 import SnackBar from '../../components/SnackBar';
 import { useSetSnackBottomOffset, useSetSnackExtraBottomOffset, useSnackbar, useSnackbarHeight } from '../../hooks/useSnackbar';
+import { useBag } from '../../hooks/useBag';
 
 
 function Store({ 
@@ -53,44 +54,43 @@ function Store({
   const { store } = route?.params
   const { colors, dark } = useTheme();
   const [index, setIndex] = useState(0)
-  
-  const ServiceCart = useService<BagService.bagData>(BagService, 'search', { id: store, userId: user?._id }, [user])
-  useFocusEffect(useCallback(() => { ServiceCart.onService('search', { id: store, userId: user?._id }) }, [user]))
-  
-  const bag = ServiceCart?.response?.data[0]
 
-  function additionals (data, c) {
-    return (c?.length > 0) ?
-    c?.map(({ product: {_id}, quantity, components }) => {  
-      const product = data?.products?.find(item => item?._id === _id)
+  const bagResponse = useBag(//select
+    data => data?.find(item => (item?._id === store && item?.user === user?._id) )
+  )
 
-      const subAdditionals = (components?.length > 0) ? 
-        components?.map(({ product: { _id: sub_id }, quantity: subQuantity, components }) => {  
-        const subProduct = product?.products?.find(item => item?._id === sub_id)
-        return ( subProduct?.price 
-          - 
-          (
-            (Math.max(...subProduct?.promotions?.map(item => item?.percent), 0) / 100 )
-            * subProduct?.price
-          )
-        ) * subQuantity
-      })?.reduce((acc, cur) => acc + cur, 0) : 0
+  // function additionals (data, c) {
+  //   return (c?.length > 0) ?
+  //   c?.map(({ product: {_id}, quantity, components }) => {  
+  //     const product = data?.products?.find(item => item?._id === _id)
 
-      return (( product?.price 
-        - 
-        (
-          (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
-          * product?.price
-        )
-      ) * quantity) + (quantity > 0 ? subAdditionals : 0)
-    })?.reduce((acc, cur) => acc + cur, 0)
-    : 0
-  }
+  //     const subAdditionals = (components?.length > 0) ? 
+  //       components?.map(({ product: { _id: sub_id }, quantity: subQuantity, components }) => {  
+  //       const subProduct = product?.products?.find(item => item?._id === sub_id)
+  //       return ( subProduct?.price 
+  //         - 
+  //         (
+  //           (Math.max(...subProduct?.promotions?.map(item => item?.percent), 0) / 100 )
+  //           * subProduct?.price
+  //         )
+  //       ) * subQuantity
+  //     })?.reduce((acc, cur) => acc + cur, 0) : 0
+
+  //     return (( product?.price 
+  //       - 
+  //       (
+  //         (Math.max(...product?.promotions?.map(item => item?.percent), 0) / 100 )
+  //         * product?.price
+  //       )
+  //     ) * quantity) + (quantity > 0 ? subAdditionals : 0)
+  //   })?.reduce((acc, cur) => acc + cur, 0)
+  //   : 0
+  // }
   
-  const totalPrice = bag?.bundles?.map(bundle => {
+  const totalPrice = bagResponse.data?.bundles?.map(bundle => {
     return useProductPrice(bundle) * bundle?.quantity
   })?.reduce((acc, cur) => acc + cur, 0) 
-  const totalQuantity = bag?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
+  const totalQuantity = bagResponse.data?.bundles?.map(cart => cart?.quantity)?.reduce((acc, cur) => acc + cur, 0) | 0
 
   const rootNavigation = useRootNavigation()
 
@@ -397,6 +397,7 @@ function Store({
     return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
   }
 
+  
   if (loading) return <Loading />
   if (!response.network) return <Refresh onPress={() => navigation.replace('Store', { store })}/>
   if (!response.ok) return <NotFound title={`This store doesn't exist.`} redirectText={`Go to home screen!`}/>
@@ -480,24 +481,23 @@ function Store({
         />
         
       </PullToRefreshView>
-
-      <SnackBar visible
-        onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)}
-        messageColor={colors.text}
-        dark={dark}
-        position={"bottom"}
-        bottom={bottom}
-        icon={'shopping-bag'}
-        iconColor={colors.text}
-        textDirection={'row'}
-        textMessage={formatedMoney(totalPrice)}
-        textSubMessage={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
-        formatedMoney(data?.store?.minDeliveryBuyValue))}
-        indicatorIcon
-        onPress={() => navigation.navigate('Bag', { store })}
-        actionText={`${totalQuantity}`}
-        accentColor={colors.primary}
-      />
+        <SnackBar visible
+          onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)}
+          messageColor={colors.text}
+          dark={dark}
+          position={"bottom"}
+          bottom={bottom}
+          icon={'shopping-bag'}
+          iconColor={colors.text}
+          textDirection={'row'}
+          textMessage={formatedMoney(totalPrice)}
+          textSubMessage={!data?.store?.minDeliveryBuyValue ? undefined : (" / " + 
+          formatedMoney(data?.store?.minDeliveryBuyValue))}
+          indicatorIcon
+          onPress={() => navigation.navigate('Bag', { store })}
+          actionText={`${totalQuantity}`}
+          accentColor={colors.primary}
+        />
 
       {/* {(totalQuantity > 0) && 
       <View style={{ position: 'absolute', bottom,  width: '100%', padding: '5%' }} 

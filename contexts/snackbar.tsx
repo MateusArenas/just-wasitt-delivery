@@ -4,6 +4,7 @@ import SnackBar, { SnackbarComponentProps } from "../components/SnackBar";
 import Animated, { cancelAnimation, runOnJS, useAnimatedGestureHandler, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useSharedValue, withDecay, withDelay, withSpring, withTiming,  } from "react-native-reanimated";
 import { createContext, useContextSelector } from 'use-context-selector';
 import { PanGestureHandler } from "react-native-gesture-handler";
+import { Platform, StyleSheet } from "react-native";
 interface SnackBarData {
   setBottomOffset: React.Dispatch<React.SetStateAction<number>>
   setExtraBottomOffset: React.Dispatch<React.SetStateAction<number>>
@@ -25,6 +26,7 @@ export const SnackBarProvider: React.FC = ({ children }) => {
 
   const [bottomOffset, setBottomOffset] = React.useState<number>(0)
   const [extraBottomOffset, setExtraBottomOffset] = React.useState<number>(0)
+
   const translateValue = useSharedValue(bottomOffset+extraBottomOffset);
 
   const totalOffset = (bottomOffset+extraBottomOffset)
@@ -46,11 +48,15 @@ export const SnackBarProvider: React.FC = ({ children }) => {
     snackbarProps?.onLayout && snackbarProps?.onLayout(e)
   }, [snackbarProps])
 
-  const containerAnimStyle = useAnimatedStyle(() => {
-    return { 
-      bottom: translateValue?.value,
+  const stylesValue = { 
+    container: {
+      bottom: translateValue?.value
     }
-  }, [translateValue])
+  }
+
+  const containerAnimStyle = useAnimatedStyle(() => ({
+    bottom: translateValue?.value
+  }))
 
   const onGestureEvent = useAnimatedGestureHandler({
     onStart(event, ctx: { posY: number }) {
@@ -81,7 +87,11 @@ export const SnackBarProvider: React.FC = ({ children }) => {
     <SnackBarContext.Provider value={{ open, close, snackbarHeight, setBottomOffset, setExtraBottomOffset }} >
         {children}
         <PanGestureHandler onGestureEvent={onGestureEvent}>
-            <Animated.View style={[containerAnimStyle, { zIndex: 1 }]}>
+            <Animated.View style={[
+                containerAnimStyle, 
+                Platform.select({ web: true }) ? 
+                {...stylesValue.container, ...styles.container} : {}
+              ]}>
               <SnackBar ref={snackbarRef}
                   dark={dark}
                   {...snackbarProps}
@@ -92,6 +102,16 @@ export const SnackBarProvider: React.FC = ({ children }) => {
     </SnackBarContext.Provider>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute', 
+    zIndex: 9999, 
+    left: 0,
+    right: 0,
+    width: '100%'
+  }
+})
 
 
 export default SnackBarContext

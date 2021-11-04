@@ -3,7 +3,7 @@ import { ReactNode } from 'hoist-non-react-statics/node_modules/@types/react';
 import React, { useMemo,useCallback, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FlexStyle, View, StyleSheet, ViewStyle, TouchableNativeFeedback, TouchableOpacity, Text, LayoutChangeEvent, useWindowDimensions, ColorValue } from 'react-native';
 import { Platform } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation, useAnimatedGestureHandler } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation, useAnimatedGestureHandler, interpolate, withTiming } from 'react-native-reanimated'
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
 import Badge from '../Badge';
@@ -66,7 +66,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   distanceCallback= null,
   actionHandler= null,
   onPress=null,
-  actionHide=true,
+  actionHide=false,
   onClose= null,
   onOpen=null,
   left= 0,
@@ -106,15 +106,12 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   }));
 
   function openSnackbar () {
-    if (translateValue.value !== 1) {
-      onOpen && onOpen()
-      translateValue.value = Animated.withTiming(1, {
-        duration: durationValues.entry,
-        easing: easingValues.entry,
-      });
-    } else {
-      cancelAnimation(translateValue)
-    }
+    onOpen && onOpen()
+    translateValue.value = withTiming(1, {
+      duration: durationValues.entry,
+      easing: easingValues.entry,
+    });
+
     if (autoHidingTime) {
       if (timerRef.current) clearTimeout(timerRef.current)
       const hideFunc = hideSnackbar.bind(this);
@@ -127,13 +124,13 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
       clearInterval(timerRef.current);
       timerRef.current = null
     };
-  }, []);
+  }, [hideDistance]);
 
-  useEffect( () => {
+  React.useEffect( () => {
     if (visible) {
       openSnackbar()
     } else {
-      hideSnackbar();
+      hideSnackbar()
     }
   }, [visible])
 
@@ -145,7 +142,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
         easing: easingValues.exit,
       })
     } else {
-      cancelAnimation(translateValue)
+      // cancelAnimation(translateValue)
     }
   }
 
@@ -178,38 +175,39 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   // }, [fadeAnimBottom, bottom])
 
 
-  const containerAnimStyle = useAnimatedStyle(() => {
-    return { 
-      height: Animated.interpolate(translateValue?.value, 
+  const stylesValue = { 
+    container: {
+      height: interpolate(translateValue?.value, 
         [0, 1],
         [0, hideDistance],
       ),
-      bottom: Animated.withTiming(bottom, 
+      bottom: withTiming(bottom, 
         { duration: durationValues.entry/2 }
-      ),
+      )
+    },
+    component: {
+      bottom: interpolate(translateValue?.value,
+        [0, 1],
+        [hideDistance * -1, 0],
+      )
     }
-  })
+  }
 
-  const componentAnimStyle = useAnimatedStyle(() => {
-    switch (position) {
-      case 'bottom':
-        return { 
-          bottom: Animated.interpolate(translateValue?.value,
-            [0, 1],
-            [hideDistance * -1, 0],
-          )
-         }
-      case 'top':
-        return { 
-          top: Animated.interpolate(translateValue?.value,
-            [0, 1],
-            [hideDistance * -1, 0],
-          )
-        }
-      default:
-        return {}
-    }
-  })
+  const containerAnimStyle = useAnimatedStyle(() => ({
+    height: interpolate(translateValue?.value, 
+      [0, 1],
+      [0, hideDistance],
+    ),
+    bottom: withTiming(bottom, 
+      { duration: durationValues.entry/2 }
+    )
+  }))
+  const componentAnimStyle = useAnimatedStyle(() => ({
+    bottom: interpolate(translateValue?.value,
+      [0, 1],
+      [hideDistance * -1, 0],
+    )
+  }))
 
 return (
       <Animated.View 
@@ -218,19 +216,21 @@ return (
           containerAnimStyle,
           position === 'top'
             ? { top }
-            : {  }, /// bottom
+            : {},
+            Platform.select({ web: true }) ? stylesValue.container : {}
         ]}
       >
           <Animated.View
             style={[
               containerStyle,
               styles.container,
+              componentAnimStyle,
               {
                 backgroundColor,
                 left,
                 right,
               },
-              componentAnimStyle,
+              Platform.select({ web: true }) ? stylesValue.component : {}
             ]}
             onLayout={e => {
               const height = e?.nativeEvent?.layout?.height
@@ -266,7 +266,7 @@ return (
                     { flex: 1, padding: 10 },
                     { flexDirection: textDirection }
                   ]}>
-                    <Text
+                   {!!textMessage && <Text
                       numberOfLines={numberOfLines}
                       style={[
                         messageStyle,
@@ -275,7 +275,7 @@ return (
                       ]}
                     >
                       {textMessage}
-                    </Text>
+                    </Text>}
                     {!!textSubMessage && <Text
                       numberOfLines={numberOfLines}
                       style={[
@@ -336,6 +336,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 555,
     // backgroundColor: 'red',
+    // width: '100%',
   },
   container: {
     flexDirection: 'row',
@@ -373,21 +374,21 @@ const styles = StyleSheet.create({
 
 
 const Touchable = ({ disabled, onPress, style={}, children }) => {
-  if (IS_ANDROID && !IS_LT_LOLLIPOP) {
-    return (
-      <TouchableNativeFeedback
-        disabled={disabled}
-        background={TouchableNativeFeedback.SelectableBackgroundBorderless()}
-        onPress={onPress}
-      >
-        <View
-          style={style}
-        >
-          {children}
-        </View>
-      </TouchableNativeFeedback>
-    );
-  }
+  // if (IS_ANDROID && !IS_LT_LOLLIPOP) {
+  //   return (
+  //     <TouchableNativeFeedback
+  //       disabled={disabled}
+  //       background={TouchableNativeFeedback.SelectableBackgroundBorderless()}
+  //       onPress={onPress}
+  //     >
+  //       <View
+  //         style={style}
+  //       >
+  //         {children}
+  //       </View>
+  //     </TouchableNativeFeedback>
+  //   );
+  // }
 
   return (
     <TouchableOpacity
