@@ -6,11 +6,12 @@ if (Platform.OS === "web" ) {
 }
 
 interface useUriProps {
-  defaultSource: ImageSourcePropType
+  defaultSource?: ImageSourcePropType
+  defaultUri?: string
   uri: string
 }
-function useUri ({ defaultSource, uri }: useUriProps) {
-  const [currentUri, setCurrentUri] = useState(Image.resolveAssetSource(defaultSource)?.uri)
+function useUri ({ defaultSource, defaultUri , uri }: useUriProps) {
+  const [currentUri, setCurrentUri] = useState(defaultUri || Image.resolveAssetSource(defaultSource)?.uri)
 
   useEffect(() => {
     if (!uri) return

@@ -1,7 +1,6 @@
 import { useTheme } from '@react-navigation/native';
 import React from 'react';
-import { View, Text, ColorValue, TextStyle, StyleProp, ViewStyle } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { View, Text, ColorValue, TextStyle, StyleProp, ViewStyle, TouchableOpacity } from 'react-native';
 
 interface TextButtonProps {
   disabled?: boolean
@@ -12,6 +11,7 @@ interface TextButtonProps {
   color: ColorValue
   style?: StyleProp<ViewStyle>
   textTransform?: TextStyle["textTransform"]
+  fontWeight?: TextStyle["fontWeight"]
   right?: React.ReactNode
 }
 
@@ -24,6 +24,7 @@ const TextButton: React.FC<TextButtonProps> = ({
   color,
   style,
   textTransform,
+  fontWeight='500',
   right
 }) => {
   const opacity = disabled ? .5 : 1
@@ -32,7 +33,7 @@ const TextButton: React.FC<TextButtonProps> = ({
       <View style={[{ padding: 10 }, style, { flexDirection: 'row', alignItems: 'center', opacity }]}>
         <Text numberOfLines={1} style={[
           { fontSize, color }, 
-          { fontWeight: '500', textTransform }
+          { fontWeight, textTransform }
         ]}>{label}</Text>
         {right}
       </View>

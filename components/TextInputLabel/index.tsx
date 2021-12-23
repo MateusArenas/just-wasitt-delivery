@@ -39,8 +39,8 @@ const InputType = ({ type, color, ...props }) => {
     case 'default':
       return (
         <TextInput {...props}
-          placeholderTextColor={colors.border}
-          style={[styles.textInput, props.style, { color }]} 
+          placeholderTextColor={color}
+          style={[styles.textInput, props.style, { color, opacity: props?.value ? 1 : .5, }]} 
         />
       )
     case 'fake':
@@ -48,7 +48,8 @@ const InputType = ({ type, color, ...props }) => {
         <TouchableHighlight onPress={() => { props.onFocus(null as any) }}>
           <View style={[styles.textInput, props.style, { justifyContent: 'center' }]}>
             <Text style={[styles.textInput, { minHeight: 'auto' }, { 
-              color: props.value ? color : colors.border
+              color,
+              opacity: props?.value ? 1 : .5,
             }]}>
               {props.value ? props.value : props.placeholder}
             </Text>
@@ -58,8 +59,8 @@ const InputType = ({ type, color, ...props }) => {
     default:
       return (
         <TextInputMask type={type} {...props}
-          placeholderTextColor={colors.border}
-          style={[styles.textInput, props.style, { color }]} 
+          placeholderTextColor={color}
+          style={[styles.textInput, props.style, { color, opacity: props?.value ? 1 : .5, }]} 
         />
       )
   }
@@ -73,7 +74,6 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   textInputDescribe: {
-    opacity: .6,
     fontSize: 14,
     fontWeight: '500',
   },

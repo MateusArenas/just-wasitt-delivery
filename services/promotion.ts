@@ -9,6 +9,7 @@ interface errorData { error: string }
 export interface PromotionData {
   self?: boolean
   otherPromotions?: Array<{ _id: string, name: string }>
+  slug: string
   _id: string
   user: string & userData
   store: string & StoreDate
@@ -19,7 +20,7 @@ export interface PromotionData {
   products: Array<string & ProductData>
 }
 
-export async function index ({ store, ...params } : { store: string, params: any }) {
+export async function index ({ store, ...params } : { store: string, params?: any }) {
   try {
     const response = await api.get(`/store/${store}/promotions`, { params })
     return Promise.resolve(response as AxiosResponse<Array<PromotionData>>)

@@ -22,6 +22,8 @@ import TextButton from '../../components/TextButton';
 import CardLink from '../../components/CardLink';
 import { writePrice } from '../../utils';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { useSaved } from '../../hooks/useSaved';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 export default function Saved({
   navigation,
@@ -36,18 +38,16 @@ export default function Saved({
   const { user } = useContext(AuthContext)
   const { colors } = useTheme()
 
-  const { 
-    disabled,
-    response, 
-    loading, 
-    onLoading,
-    refreshing,
-    onService, 
-    onRefresh 
-  } = useLoadScreen<SavedService.SavedData>(async () => await SavedService.index({ userId: user?._id }))
-  React.useEffect(() => { if(user) onLoading() }, [user])
 
-  const data: Array<SavedService.SavedData> = response?.data as any
+  const { 
+    data,
+    loading,
+    missing,
+    refreshing,
+    onRefresh,
+    onRemoveSaved,
+    onCreateSaved,
+  } = useSaved()
 
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
@@ -152,34 +152,56 @@ export default function Saved({
     }
   }
 
+  const snackbar = useSnackbar()
+
   async function onClear (selecteds: Array<string>) {
     try {
-      selecteds.map(onRemove)
+      const items = selecteds?.map(id => data?.find(item => item?._id === id))
+      await Promise.all(selecteds.map(onRemoveSaved))
       setSelecteds([])
       setEditMode(false)
+      snackbar?.open({
+        visible: true,
+        autoHidingTime: 5000,
+        messageColor: colors.text,
+        position: "bottom",
+        badge: selecteds?.length,
+        badgeColor: 'white',
+        badgeBackgroundColor: colors.notification,
+        textMessage: selecteds?.map(id => {
+          const find = data?.find(item => item?._id === id)
+          return `${find?.store?.name}`
+        })?.join(', '),
+        actionHide: true,
+        actionHandler: () => onRestore(items),
+        actionText: "DESFAZER",
+        accentColor: colors.primary,
+      })
     } catch (err) {}
   }
 
-  async function onRemove (_id :string ) {
+    
+  const onRestore = async (items) => {//arrumar
     try {
-      await onService(async () => {
-        try {
-          await SavedService.remove({ _id, userId: user?._id })
-          return response.data?.filter(item => item?._id !== _id)
-        } catch (err) {}
-      })
-      rootNavigation.refresh('Root')
+      await Promise.all(items?.map(async item => {
+        const body = ({
+          _id: item?._id,
+          store: item?.store?._id
+        })
+        await onCreateSaved(body)
+        return item
+      })) 
     } catch (err) {}
   }
 
   if (loading) return <Loading />
-  if (!response?.network) return <Refresh onPress={() => navigation.replace('Favorite')}/>
-  if (!response?.ok) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
+  // if (!response?.network) return <Refresh onPress={() => navigation.replace('Favorite')}/>
+  if (missing) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
       <PullToRefreshView
         offset={top}
-        disabled={editMode || disabled}
+        disabled={editMode || loading}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -188,7 +210,7 @@ export default function Saved({
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingTop: top, paddingBottom: bottom }}
             scrollIndicatorInsets={{ top, bottom }}
-            data={response?.data}
+            data={data}
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             ItemSeparatorComponent={() => <View style={{ height: 1, width: '100%', backgroundColor: colors.border }}/>}
             ListFooterComponentStyle={{ flex: 1 }}
@@ -198,7 +220,7 @@ export default function Saved({
                 style={{ flex: 1 }}
               />
             }
-            renderItem={({ item } : { item: SavedService.SavedData }) => (
+            renderItem={({ item } : { item: SavedService.savedData }) => (
               <CartBag 
                 editMode={editMode}
                 selected={(!!selecteds?.find(id => id === item?._id) && editMode)}

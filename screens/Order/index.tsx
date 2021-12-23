@@ -189,7 +189,7 @@ export default function Order ({
         </TouchableOpacity>
 
         {data?.bag?.bundles?.map(item => (
-          <TouchableOpacity onPress={() => navigation.navigate('Product', { store, id: item?.product?._id })}>
+          <TouchableOpacity onPress={() => navigation.navigate('Product', { store, slug: item?.product?.slug })}>
             <View style={{ 
               flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
               backgroundColor: colors.card, padding: 10,

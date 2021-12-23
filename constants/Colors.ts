@@ -26,10 +26,10 @@ export default {
       primary,
       notification,
       text: '#fff',
-      background: '#000',
+      background: '#1c1b21',
       // card: '#0d0d0d',
-      card: '#111111',
-      border: 'rgba(255,255,255,.2)',
+      card: 'rgb(38, 37, 45)',
+      border: '#a79fd512',
     }
   },
 } as themeProps

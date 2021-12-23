@@ -6,15 +6,15 @@ import * as LocalStorage from './local'
 import * as ProductService from './product'
 
 interface errorData { error: string }
-export interface FavoriteData { 
+export interface favoriteData { 
   _id: string
-  product: ProductService.ProductData & string
+  product: string & ProductService.ProductData
   store: string
 }
 
 const VERSION = '2.2'
 
-export async function all ({ userId } : { userId: string }) : Promise<Array<Array<FavoriteData>>> {
+export async function all ({ userId } : { userId: string }) : Promise<Array<Array<favoriteData>>> {
   try {
     const data = await LocalStorage.all(`/${VERSION}/${userId}/favorite/store`)
     const response = await Promise.all(data?.map(async (localData, _index) => {
@@ -22,43 +22,52 @@ export async function all ({ userId } : { userId: string }) : Promise<Array<Arra
       const response = await index({ store, userId })
       return localData?.map((item, _index) => response?.data[_index])
     }))
-    return Promise.resolve(response as Array<Array<FavoriteData>>)
+    return Promise.resolve(response as Array<Array<favoriteData>>)
   } catch(err) { 
     return Promise.reject(err as errorData)
   } 
 }
 
-export async function index ({ store, userId } : { store: string, userId: string }) : Promise<AxiosResponse<Array<FavoriteData>>> {
+export async function index ({ store, userId } : { store: string, userId: string }) : Promise<AxiosResponse<Array<favoriteData>>> {
   try {
     const data = await LocalStorage.index(`/${VERSION}/${userId}/favorite/store/${store}`)
-    const params = { ids: data?.map(item => item?.product), store }
+    // const params = { ids: data?.map(item => item?.product), store }
     
-    const response = await ProductService.index({ store, params })
-    response.data = data?.map(item => 
-      ({...item, product: response?.data?.find(_item => _item?._id === item?.product ) || { '_id': item?.product } })
-    )
+    // const response = await ProductService.index({ store, params })
+    // response.data = data?.map(item => 
+    //   ({...item, product: response?.data?.find(_item => _item?._id === item?.product ) || { '_id': item?.product } })
+    // )
+
+    const response = await Promise.all(data?.map(async item => await find({ userId, store, _id: item?._id })))
+
     return Promise.resolve(response as any)
   } catch(err) { 
     return Promise.reject(err as errorData)
   } 
 }
 
-export async function find ({ store, _id, userId } : { store: string, _id: string, userId: string }) : Promise<FavoriteData> {
+export async function find ({ store, _id, userId } : { store: string, _id: string, userId: string }) : Promise<favoriteData> {
   try {
     const data = await LocalStorage.find(`/${VERSION}/${userId}/favorite/store/${store}`, _id)
-    return Promise.resolve(data)
+
+    const response = await ProductService.search({ store, id: _id })
+
+    return Promise.resolve({...data, product: response?.data })
   } catch(err) { 
     return Promise.reject(err)
   } 
 }
 
-export async function save ({ params, userId } : { params: FavoriteData | Array<FavoriteData>, userId: string } ) : Promise<boolean> {
+export async function save ({ params, userId } : { params: favoriteData, userId: string } ) : Promise<favoriteData> {
   try {
     const { store } = Array.isArray(params) ? params[0] : params
     await LocalStorage.save(`/${VERSION}/${userId}/favorite/store/${store}`, params)
-    return Promise.resolve(true)
+
+    const response = await find({ userId, store: params?.store, _id: params?._id })
+
+    return Promise.resolve(response)
   } catch(err) {
-    return Promise.reject(false)
+    return Promise.reject(null)
   } 
 }
 

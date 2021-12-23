@@ -1,34 +1,26 @@
-import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
+import { NavigationProp, RouteProp, StackActions, useFocusEffect, useNavigation, useRoute, useTheme } from '@react-navigation/native';
 import { HeaderTitle, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useContext, useEffect } from 'react';
 import { Clipboard, View, KeyboardAvoidingView, StyleSheet, TouchableWithoutFeedback, Text, Platform, Button, Image, TextInputProps, ColorValue, useWindowDimensions, TouchableOpacity, FlatList, Keyboard, ImageBackground } from 'react-native';
-import {  TextInput, ScrollView } from 'react-native-gesture-handler';
-import AuthContext from '../../contexts/auth';
 import { RootStackParamList } from '../../types';
 import IconButton from '../../components/IconButton';
-import * as StoreService from '../../services/store';
-import * as ManageService from '../../services/manage';
+import * as PromotionService from '../../services/promotion';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import Loading from '../../components/Loading';
 import Refresh from '../../components/Refresh';
 import NotFound from '../../components/NotFound';
 import TextInputLabel from '../../components/TextInputLabel';
-import { TabBar, TabView } from 'react-native-tab-view';
+import { TabBar, TabView, TabBarIndicator } from 'react-native-tab-view';
 import CustomTopTabBar, { TabViewRouteProps } from '../../components/CustomTopTabBar';
-import CustomBottomTabBar from '../../components/CustomBottomTabBar';
-import FormAndress from '../../components/FormAndress';
-import InputCheck from '../../components/InputCheck';
-import { MaterialIcons } from '@expo/vector-icons';
-import TextButton from '../../components/TextButton';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import KeyboardSpacer from '../../components/KeyboardSpacer';
 import useLoadScreen from '../../hooks/useLoadScreen';
-import CardLink from '../../components/CardLink';
 import BottomHalfModalContext from '../../contexts/BottomHalfModal';
-import { BlurView } from 'expo-blur';
 import { StatusBar, setStatusBarHidden } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import SnackBar from '../../components/SnackBar';
+import useUri from '../../hooks/useUri';
+import Animated, { cancelAnimation, Extrapolate, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+const timer = 5000;
 
 export default function Offers ({
   navigation,
@@ -42,17 +34,31 @@ export default function Offers ({
   const rootNavigation = useRootNavigation()
   const layout = useWindowDimensions()
 
+  const { 
+    response, 
+    loading,
+    refreshing, 
+    onRefresh,
+    onLoading,
+    disabled
+  } = useLoadScreen<PromotionService.PromotionData>(async () => await PromotionService.index({ store }))
+  useEffect(() => { onLoading(); }, [])
+
   const [index, setIndex] = React.useState(0)
-
-  const data: Array<TabViewRouteProps> = [
-    { key: '0', title: 'Principais' },
-    { key: '1', title: 'Foto' },
-    { key: '2', title: 'Configurações' },
-    { key: '3', title: 'Endereço' },
-  ]
-
-  const [routes] = React.useState<Array<TabViewRouteProps>>(data)
   
+  const [routes, setRoutes] = React.useState<Array<TabViewRouteProps>>([])
+  
+  React.useEffect(() => {
+    setRoutes(response?.data?.map(item => ({
+      key: item?._id, 
+      id: item?._id, 
+      slug: item?.slug,
+      title: item?.name,
+      uri: item?.uri,
+      subTitle: item?.about,
+      quantity: item?.products?.length,
+    })))
+  }, [response?.data])
 
   const [pressIn, setPressIn] = React.useState(false)
   
@@ -60,28 +66,45 @@ export default function Offers ({
     <OfferRoute 
         onPressIn={() => setPressIn(true)} 
         onPressOut={() => setPressIn(false)} 
+        slug={route?.slug}
+        id={route?.id} 
+        uri={route?.uri} 
         title={route?.title} 
+        subTitle={route?.subTitle} 
+        quantity={route?.quantity}
         setIndex={setIndex} 
-        length={data?.length} 
+        length={routes?.length} 
         index={index}
     />
-  , [index, setIndex, data, setPressIn])
+  , [index, setIndex, routes, setPressIn])
 
+  const timerAnim = useSharedValue(0)
 
   React.useEffect(() => {
+    timerAnim.value = withTiming(1, {
+      duration: timer
+    })
     const interval = setInterval(() => {
-      if(index < data?.length && !pressIn) {
+      timerAnim.value = 0;
+      if(index < (routes?.length-1) && !pressIn) {
         setIndex(index => index+1)
       } else {
         navigation.goBack()
       }
-    }, 3000);
+    }, timer);
 
-    if (pressIn) {
-        clearInterval(interval)
+    if (pressIn) { 
+      cleanup();
     }
-    return () => clearInterval(interval);
-  }, [setIndex, index, data, pressIn]);
+    
+    function cleanup () {
+      clearInterval(interval);
+      cancelAnimation(timerAnim) 
+      timerAnim.value = 0;
+    }
+
+    return cleanup
+  }, [setIndex, index, routes, pressIn]);
 
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
@@ -107,36 +130,79 @@ export default function Offers ({
 
     return () => setStatusBarHidden(false, 'fade')
   }, [setStatusBarHidden])
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    return {
+      width: interpolate(timerAnim.value, 
+        [0, 1],
+        [0, (100/routes?.length)-2.5],
+      ) + '%',
+    }
+  })
   
 
   return (
-    <TabView style={{ }}
-      navigationState={{ index, routes }}
-      renderScene={renderScene}
-      onIndexChange={setIndex}
-      initialLayout={{ width: layout.width }}
-      renderTabBar={props => (
-        <TabBar {...props}
-            style={[{ 
-                elevation: 0, shadowColor: 'transparent', 
-                backgroundColor: 'transparent', 
-                borderBottomWidth: 1, borderColor: colors.border,
-                height: 8,
-            }]}
-            inactiveColor={colors.text}
-            pressColor={colors.border}
-            activeColor={colors.text}
-            indicatorStyle={{ backgroundColor: colors.text, opacity: .5 }}
-            labelStyle={{ height: 4, color: colors.text, textTransform: 'capitalize' }}
-            renderLabel={({ route, focused, color }) => null}
-        />
-      )}
-    />
+      <TabView style={{ }}
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => (
+          <TabBar {...props}
+              style={[{ 
+                  elevation: 0, shadowColor: 'transparent', 
+                  backgroundColor: 'transparent', 
+                  height: 8,
+              }]}
+              inactiveColor={colors.text}
+              pressColor={colors.border}
+              activeColor={colors.text}
+              indicatorStyle={[
+                { 
+                  backgroundColor: colors.text, borderRadius: 4,
+                  zIndex: 2, height: 4,
+                },
+                indicatorStyle
+              ]}
+              renderIndicator={props => 
+                <>
+                  <TabBarIndicator {...props} 
+                    style={[props?.style, { 
+                    left: props.navigationState.index === 0 ? '1.5%' : 0,
+                    right: props.navigationState.index === (routes?.length-1) ? '1.5%' : 0,
+                   }]}/>
+                  <View style={{ 
+                    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+                    position: 'absolute', bottom: 0, zIndex: 1,
+                  }}>
+                    {routes.map((item, index) => (
+                      <View key={item?.key} style={{ 
+                        width: `${(100/routes?.length)-2}%`, 
+                        marginLeft: index === 0 ? '1%' : '.5%',
+                        marginRight: index === (routes?.length-1) ? '1%' : '.5%',
+                        height: 4, borderRadius: 4, 
+                        backgroundColor: colors.text, 
+                        opacity: index < props.navigationState?.index ? 1 : .5,
+                      }}/>
+                    ))}
+                  </View>
+                </>
+              }
+              labelStyle={{ height: 4, color: colors.text, textTransform: 'capitalize' }}
+              renderLabel={({ route, focused, color }) => null}
+          />
+        )}
+      />
   );
 };
 
 interface OfferProps {
+    slug: string
+    id: string  
+    uri?: string
     title?: string
+    subTitle?: string
+    quantity?: number
     index?: number
     setIndex?: React.Dispatch<React.SetStateAction<number>>
     length?: number
@@ -144,12 +210,29 @@ interface OfferProps {
     onPressOut?: () =>any
 }
 
-const OfferRoute: React.FC<OfferProps> = ({ title, index, setIndex, length, onPressIn, onPressOut }) => {
-  const { colors } = useTheme()
+const OfferRoute: React.FC<OfferProps> = ({ 
+  title, subTitle, id, quantity, slug,
+  uri:initialUri, 
+  index, setIndex, length, onPressIn, onPressOut 
+}) => {
+  const { colors, dark } = useTheme()
   const { width } = useWindowDimensions()
+  const navigation = useNavigation<NavigationProp<RootStackParamList, 'Offers'>>()
+  const route = useRoute<RouteProp<RootStackParamList, 'Offers'>>()
+  const { store } = route.params
+
+  const [backgroundColor, setBackgroundColor] = React.useState('transparent')
+  const uri = useUri({ 
+    defaultSource: require('../../assets/images/default-product.jpg'),
+    // defaultUri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAOb32U0uCmM_kGue0IXlgnwQmNmB_J5Ys3Q&usqp=CAU',
+    uri: initialUri
+  })
+
   return (
     <ImageBackground style={{ flex: 1 }}
-        source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAOb32U0uCmM_kGue0IXlgnwQmNmB_J5Ys3Q&usqp=CAU' }}
+        source={{ uri }}
+        resizeMode={'contain'}
+        imageStyle={{ backgroundColor }}
     >
         <TouchableWithoutFeedback onPressIn={onPressIn} onPressOut={onPressOut}>
             <View style={{ flex: 1 }}>
@@ -157,26 +240,31 @@ const OfferRoute: React.FC<OfferProps> = ({ title, index, setIndex, length, onPr
                     <TouchableWithoutFeedback disabled={index===0} onPressIn={onPressIn} onPressOut={onPressOut} onPress={() => setIndex(index-1)}>
                         <View style={{ flex: 1 }}/>
                     </TouchableWithoutFeedback>
-                    <TouchableWithoutFeedback disabled={index===length-1} onPressIn={onPressIn} onPressOut={onPressOut} onPress={() => setIndex(index+1)}>
+                    <View style={{ flex: 1 }}/>
+                    <TouchableWithoutFeedback onPressIn={onPressIn} onPressOut={onPressOut} onPress={() => {
+                      if (index < (length-1)) {
+                        setIndex(index+1)
+                      } else {
+                        navigation.goBack()
+                      }
+                    }}>
                         <View style={{ flex: 1 }}/>
                     </TouchableWithoutFeedback>
                 </View>
+                <SnackBar visible
+                  messageColor={colors.text}
+                  dark={dark}
+                  position={"bottom"}
+                  // icon={'tag'}
+                  iconColor={colors.text}
+                  textMessage={'% '+title}
+                  textSubMessage={subTitle}
+                  indicatorIcon
+                  onPress={() => navigation.navigate('Promotion', { store, slug })}
+                  actionText={quantity}
+                  accentColor={colors.text}
+                />
             
-                <TouchableOpacity onPress={() => {}}>
-                    <LinearGradient style={{ padding: 20, alignItems: 'center' }} 
-                        colors={['transparent', 'rgba(0, 0, 0, .2)']}
-                    >
-                        <MaterialIcons
-                            name={'expand-less'}
-                            size={24*2}
-                            color={colors.text}
-                        />
-                        <Text style={{
-                            color: colors.text, fontWeight: '500',
-                            fontSize: 16, 
-                        }}>{title}</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
             </View>
         </TouchableWithoutFeedback>
     </ImageBackground>

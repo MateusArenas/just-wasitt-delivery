@@ -12,6 +12,9 @@ import { ScrollView } from 'react-native-gesture-handler';
 import IconButton from '../../components/IconButton';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import KeyboardSpacer from '../../components/KeyboardSpacer';
+import { gql, useMutation } from '@apollo/client';
+
+
 
 export default function SignUp ({
   navigation,

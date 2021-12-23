@@ -1,29 +1,43 @@
 import { HeaderTitle, StackHeaderTitleProps, StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { FlatList, ImageBackground, useWindowDimensions, View, Text, Keyboard, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
+import { FlatList, ImageBackground, useWindowDimensions, View, Text, Keyboard, TouchableWithoutFeedback, TouchableOpacity, ScrollView } from 'react-native';
 import { RootStackParamList } from '../../types';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import {  } from '@react-navigation/material-top-tabs'
-import * as CategoryService from '../../services/category'
 import * as ProductService from '../../services/product';
-import useService from '../../hooks/useService';
 import { NavigationProp, RouteProp, StackActions, useFocusEffect, useNavigation, useRoute, useTheme } from '@react-navigation/native';
 import Loading from '../../components/Loading';
-import Refresh from '../../components/Refresh';
 import NotFound from '../../components/NotFound';
-import CustomBottomTabBar from '../../components/CustomBottomTabBar';
 import CustomTopTabBar, { TabViewRouteProps } from '../../components/CustomTopTabBar';
 import TextButton from '../../components/TextButton';
-import { MaterialIcons } from '@expo/vector-icons';
 import TextInputCentered from '../../components/TextInputCentered';
 import KeyboardSpacer from '../../components/KeyboardSpacer'
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import IconButton from '../../components/IconButton';
 import BottomHalfModalContext from '../../contexts/BottomHalfModal';
-import CardLink from '../../components/CardLink';
 import AuthContext from '../../contexts/auth';
-import useLoadScreen from '../../hooks/useLoadScreen';
 import useRootNavigation from '../../hooks/useRootNavigation';
+import { CREATE_CATEGORY, EDIT_CATEGORY, MAKE_ADD_CATEGORY, MAKE_EDIT_CATEGORY } from './graphql';
+import { NetworkStatus, useMutation, useQuery } from '@apollo/client';
+import { PullToRefreshView } from '../../components/PullToRefreshView';
+import { BlurView } from 'expo-blur';
+import HeaderSubTitle from '../../components/HeaderSubTitle';
+import useProductPrice, { useProductValue } from '../../hooks/useProductPrice';
+import { MaskService } from 'react-native-masked-text';
+import { useDebounce } from '../../hooks/useDebounce';
+import BoardCardPicker from '../../components/BoardCardPicker';
+
+function formatedMoney (value: number = 0) : string {
+  const moneyOptions = {
+    precision: 2,
+    separator: ',',
+    delimiter: '.',
+    unit: 'R$ ',
+    suffixUnit: ''
+  }
+  return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
+}
+
+const NUM_ITEMS_PER_PAGE = 9;
 
 export default function MakeCategory ({
   navigation,
@@ -31,359 +45,279 @@ export default function MakeCategory ({
 } : StackScreenProps<RootStackParamList, 'MakeCategory'>) {
   const top = useHeaderHeight()
   const bottom = useContext(BottomTabBarHeightContext) || 0
+  const [extraBottom, setExtraBottom] = React.useState(70)
   
   const { user, signed } = useContext(AuthContext)
-  const { colors } = useTheme()
-  const { store, id } = route.params
+  const { colors, dark } = useTheme()
+  const { store, slug } = route.params
   const layout = useWindowDimensions()
   const [name, setName] = useState<string>('')
   const [products, setProducts] = useState<Array<string>>([])
   const rootNavigation = useRootNavigation()
 
-  const {
-    disabled,
-    response,
-    loading,
-    refreshing,
-    onLoading,
-    onService,
-    onRefresh,
-  } = useLoadScreen<CategoryService.CategoryData>(async () => await CategoryService.search({ store, id }))
+  const [productName, setProductName] = useState("")
 
-  useEffect(() => { if(id) { onLoading() } }, [])
-  const data = response?.data[0]
+  const search = useDebounce(productName, 250)
+
+  const { called, loading, error, data, refetch, fetchMore, networkStatus } = useQuery(
+    slug ? MAKE_EDIT_CATEGORY : MAKE_ADD_CATEGORY, 
+    { 
+      variables: {
+        storeName: store,
+        slug,
+        search, regex: ["name"],
+        offset: 0, 
+        limit: NUM_ITEMS_PER_PAGE, 
+      },
+      notifyOnNetworkStatusChange: true,
+    }
+  )
+
+  useEffect(() => { refetch() }, [search])
 
   useEffect(() => {
-    if(data) {
-      setName(data?.name)
-      setProducts(data?.products?.map(item => typeof item?._id === 'string' ? item?._id : item))
+    if(data?.category) {
+      setName(data?.category?.name)
+      setProducts(data?.category?.products?.map(item => item?._id))
     }
-  }, [data, setName, setProducts])
+  }, [data])
+
+
+  const [newCategory, { loading: loadingForNew }] = useMutation(CREATE_CATEGORY, {});
+
+  const [editCategory, { loading: loadingForEdit }] = useMutation(EDIT_CATEGORY, {});
 
   const onSubmit = React.useCallback(async () => {
     if (!name && !signed) return null
+    Keyboard.dismiss()
     try {
-      if(id) {
-        await onService(async () => await CategoryService.update({ id, store, body: { name, products } }))
+      console.log({ slug, input: { name, products } });
+      if(slug) {
+        await editCategory({ 
+          variables: { id: data?.category?._id, input: { name, products, store: data?.store?._id } },
+          refetchQueries: [
+            'CurrentCategory', 
+            'CurrentProduct', 
+            'CurrentStore',
+            'MakeAddProduct', 
+            'MakeEditProduct',
+          ],
+          awaitRefetchQueries: true,
+        })
       } else {
-        await onService(async () => await CategoryService.create({ store, body: { name, products } }))
+        await newCategory({ 
+          variables: { input: { name, products, store: data?.store?._id } }, 
+          refetchQueries: [
+            'CurrentCategory', 
+            'CurrentProduct', 
+            'CurrentStore',
+            'MakeAddProduct', 
+            'MakeEditProduct',
+          ],
+          awaitRefetchQueries: true,
+        })
       }
-      Keyboard.dismiss()
-      rootNavigation.refresh('Root')
       navigation.goBack()
     } catch (err) {}
-  }, [signed, name, id, products])
+  }, [signed, data, name, slug, products])
   
-  const BottomHalfModal = React.useContext(BottomHalfModalContext)
-
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
-      title: data?.name ? data?.name : 'Nova Categoria',
-      headerTitle: ({ tintColor, children, ...props }) => !id ? 
-        <HeaderTitle tintColor={tintColor} {...props}>
-          {children}
-        </HeaderTitle>
-      :(
-        <IconButton style={{ padding: 0 }}
-          label={children} 
-          name="expand-more" color={colors.text} size={24}
-          onPress={() => BottomHalfModal.show(modalize => 
-            <FlatList 
-              data={data?.otherCategories?.map(({ _id, name: category }) => ({
-                key: _id,
-                color: colors.text,
-                title: category,
-                onPress: () => navigation.replace('MakeCategory', { store, id: _id })
-              })) || []}
-              keyExtractor={item => `${item?.key}`}
-              renderItem={({ item }) => 
-                <CardLink 
-                  title={item?.title}
-                  color={item?.color}
-                  onPress={item?.onPress}
-                  onPressed={modalize?.current?.close}
-                />
-              }
-              ListFooterComponent={
-                <View>
-                  {data?.self && 
-                    <CardLink border={false}
-                      title={'Criar Categoria'}
-                      color={colors.primary}
-                      onPress={() => navigation.push('MakeCategory', { store })}
-                      onPressed={modalize?.current?.close}
-                    />
-                  }
-                </View>
-              }
-            />
-          )} 
-        />
-      ),
+      title: data?.category?.name ? data?.category?.name : 'Nova Categoria',
+      headerTitle: props => 
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <HeaderSubTitle children={store} />
+          <HeaderTitle {...props} onPress={() => navigation.navigate('Store', { store })} />
+        </View>
+      ,
       headerRight: ({ tintColor }) => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {(!loadingForEdit && !loadingForNew) ? 
           <TextButton style={{ paddingHorizontal: 20 }}
             label={'Concluir'}
             fontSize={16}
-            color={colors.primary}
+            color={colors.text}
             disabled={
               !name
-              || !!data?.otherCategories?.find(item => (item?.name === name && item?._id !== id)) 
             }
             onPress={onSubmit}
-          />
+          /> : <Loading style={{ paddingHorizontal: 20 }} size={'tiny'}/>}
         </View>
       ),
     });
-  }, [name, onSubmit, data]))
+  }, [name, onSubmit, data, loadingForEdit, loadingForNew]))
+
+  const loadPagination = React.useCallback(() => {
+    if (!loading && (data?.products?.length < data?.totalCount)) { 
+      fetchMore({
+        variables: { 
+          offset: data?.products?.length,
+        }
+      })
+    }
+  }, [loading, data, fetchMore])
 
   const [index, setIndex] = React.useState(0)
   const [routes] = React.useState<Array<TabViewRouteProps>>([
-    { key: 'name', icon: 'tag', title: 'Nome' },
-    { key: 'products', icon: 'local-offer', title: 'Items' },
+    { key: 'info', icon: 'menu', title: 'Principais', important: true },
+    { key: 'items', icon: 'style', title: 'Inclusos' },
   ])
+
+
+  const renderScene = useCallback(({ route }) => {
+    switch (route.key) {
+      case 'info':
+        return <InfoRoute value={name} onChangeValue={setName} />;
+      case 'items':
+        return <AddRoute loadPagination={loadPagination} 
+          value={productName}
+          onChangeValue={setProductName}
+          data={data?.products} 
+          selecteds={products} 
+          setSelecteds={setProducts}
+        />
+      default:
+        return null;
+    }
+  }, [products, name, data, productName, loadPagination])
+
+  if (networkStatus === NetworkStatus.loading && loading) return <Loading />
+  if ((error || (slug && !data?.category)) && networkStatus !== NetworkStatus.loading) return (
+    <View style={{ flex: 1 }}>
+      <PullToRefreshView
+        offset={top}
+        disabled={(networkStatus === NetworkStatus.refetch && loading)}
+        refreshing={(networkStatus === NetworkStatus.refetch && loading)}
+        onRefresh={refetch}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}>
+          <NotFound 
+            title={error?.message} 
+            redirectText={`Go to home screen!`}
+          />
+        </ScrollView>
+      </PullToRefreshView>
+    </View>
+  )
+
+  return (
+    <View style={{ flex: 1}}>
+      {(loadingForEdit || loadingForNew) && 
+      <BlurView intensity={25} tint={dark ? 'dark' : 'light'}
+        style={{ position: 'absolute', zIndex: 2, height: '100%', width: '100%'}}
+      />}
+      <TabView swipeEnabled={false} style={{ paddingTop: top }} tabBarPosition={"bottom"}
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => 
+          <CustomTopTabBar {...props}
+            style={{ backgroundColor: colors.border }}
+            onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
+          />
+        }
+      />
+      <KeyboardSpacer topSpacing={-(bottom+extraBottom)} />
+    </View>
+  )
+}
+
+interface InfoRouteProps {
+  value: string
+  onChangeValue: (value: string) => any
+}
+const InfoRoute: React.FC<InfoRouteProps> = ({ value, onChangeValue }) => {
+  const { colors } = useTheme()
+  const layout = useWindowDimensions()
+
+  const [index, setIndex] = React.useState(0)
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'name', title: 'Nome', icon: 'drive-file-rename-outline', important: true },
+  ])
+
 
   const renderScene = useCallback(({ route }) => {
     switch (route.key) {
       case 'name':
-        return <NameRoute value={name} onChangeValue={name => setName(name)} />;
-      case 'products':
-        return <ProductsRoute products={products} setProducts={setProducts}/>;
+        return (
+          <TextInputCentered style={{ color: colors.text }}
+            placeholderTextColor={colors.text}
+            selectionColor={colors.primary}
+            showSoftInputOnFocus
+            placeholder={'Categoria'}
+            maxLength={20}
+            value={value}
+            onChangeText={text => onChangeValue(text)}
+          />
+        );
       default:
         return null;
     }
-  }, [products, setProducts, setName, name])
+  }, [value])
 
-  if (loading) return <Loading />
-  if (!response?.network) return <Refresh onPress={() => navigation.replace('MakeCategory', { id, store })}/>
-  if (!response?.ok) return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
-    <TabView swipeEnabled style={{ paddingTop: top }}
-      navigationState={{ index, routes }}
-      renderScene={renderScene}
-      onIndexChange={setIndex}
-      initialLayout={{ width: layout.width }}
-      renderTabBar={props => <CustomTopTabBar {...props}/>}
-    />
+      <TabView swipeEnabled tabBarPosition="top"
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => <CustomTopTabBar {...props} />}
+      />
   )
 }
 
-const NameRoute: React.FC<{
-  value: string
-  onChangeValue: (value: string) => any
-}> = ({
-  value, onChangeValue
-}) => {
-  const { colors } = useTheme()
-  const topSpacing = React.useContext(BottomTabBarHeightContext) || 0
-
-  return (
-    <View style={{ flex: 1 }}>
-        <TouchableWithoutFeedback style={{ flex: 1}} onPress={Keyboard.dismiss} >
-          <View style={{ flex: 1 }}/>
-        </TouchableWithoutFeedback>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10 }} >
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <View>
-                <TextInputCentered autoFocus
-                  placeholderTextColor={colors.text}
-                  placeholder={'Nome'}
-                  style={{ opacity: value?.length > 0 ? .8 : .5,
-                    padding: 10,
-                    paddingLeft: 0,
-                    color: colors.text,
-                    fontSize: 16*2, fontWeight: '500', textTransform: 'capitalize'
-                  }}
-                  maxLength={20}
-                  value={value}
-                  onChangeText={text => onChangeValue(text)}
-                />
-              </View>
-              {value?.length === 0 && <MaterialIcons 
-                style={{ opacity: .5 }}
-                name="tag" 
-                size={24*1.5} 
-                color={colors.text}
-              />}
-            </View>
-          </View>
-        </View>
-        <TouchableWithoutFeedback style={{ flex: 1}} onPress={Keyboard.dismiss} >
-          <View style={{ flex: 1 }}/>
-        </TouchableWithoutFeedback>
-          <Text style={{
-            alignSelf: 'flex-end',
-            fontWeight: '500', fontSize: 16,
-            color: colors.text, opacity: .5,
-            padding: 10, 
-          }}>{value?.length + ' / ' + 20}</Text>
-          <KeyboardSpacer topSpacing={-topSpacing} />
-      </View>
-  )
+interface AddRouteProps {
+  data: Array<ProductService.ProductData>
+  selecteds: Array<string>
+  setSelecteds: React.Dispatch<React.SetStateAction<string[]>>
+  loadPagination: () => any
+  value?: string
+  onChangeValue?: (value: string) => any
 }
-
-interface ProductsRouteProps {
-  products: Array<string>
-  setProducts: React.Dispatch<React.SetStateAction<string[]>>
-}
-const ProductsRoute: React.FC<ProductsRouteProps> = ({ products, setProducts }) => {
+const AddRoute: React.FC<AddRouteProps> = ({ data, selecteds, setSelecteds, loadPagination, value, onChangeValue }) => {
   const layout = useWindowDimensions()
-  const route = useRoute<RouteProp<RootStackParamList, 'MakeCategory'>>()
-  const navigation = useNavigation<NavigationProp<RootStackParamList, 'MakeCategory'>>()
-  const { store, id } = route.params
-  const { 
-    response, 
-    loading, 
-    error, 
-    onService, 
-    onRefresh 
-  } = useService<ProductService.ProductData>(ProductService, 'index', { store })
-  const data = response?.data
 
   const [index, setIndex] = React.useState(0)
-  const [routes] = React.useState([
-    { key: 'add', title: 'Adicionar' },
-    { key: 'selected', title: 'Selecionados' },
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'products', title: 'Produtos', icon: "local-offer" },
+    // { key: 'services', title: 'Serviços', icon: "work" },
   ])
 
   const renderScene = useCallback(({ route }) => {
     switch (route.key) {
-      case 'add':
-        return <SecondRoute data={data} products={products} setProducts={setProducts}/>;
-      case 'selected':
-        return <FirstRoute data={data?.filter(item => !!products?.find(_id => item?._id === _id))} products={products} setProducts={setProducts}/>;
+      case 'products':
+        return (
+          <BoardCardPicker 
+            data={data?.map(item => ({ 
+              _id: item?._id, 
+              uri: item?.uri || "https://www.leonardusa.com/assets/corals/images/default_product_image.png", 
+              title: item?.name, 
+              describe: formatedMoney(useProductValue(item)),
+            }))} 
+            selecteds={selecteds} 
+            onChangeSelect={id => setSelecteds(items => [...items, id])}
+            onChangeDeselect={id => setSelecteds(selecteds?.filter(item => item !== id))}
+            onEndReached={loadPagination}
+            search={value}
+            onChangeSearch={onChangeValue}
+          />);
       default:
         return null;
     }
-  }, [products, setProducts, data])
+  }, [value, selecteds, data, loadPagination])
 
-  if (loading === 'LOADING') return <Loading />
-  if (error === 'NETWORK') return <Refresh onPress={() => navigation.dispatch(StackActions.replace('MakeCategory', { id, store }))}/>
-  if (error === 'NOT_FOUND') return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
-    <TabView swipeEnabled={false} tabBarPosition="bottom"
-      navigationState={{ index, routes }}
-      renderScene={renderScene}
-      onIndexChange={setIndex}
-      initialLayout={{ width: layout.width }}
-      renderTabBar={props => <CustomBottomTabBar {...props} />}
-    />
+      <TabView swipeEnabled tabBarPosition="top"
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => <CustomTopTabBar {...props} />}
+      />
   )
 }
 
-const FirstRoute: React.FC<{
-  data: Array<ProductService.ProductData>
-  products: Array<string>
-  setProducts: React.Dispatch<React.SetStateAction<string[]>>
-}> = ({
-  data, products, setProducts
-}) => {
-  const { colors } = useTheme()
-  const { width } = useWindowDimensions()
-
-  return (
-    <FlatList 
-      style={{ flex: 1 }}
-      numColumns={3}
-      data={data}
-      contentContainerStyle={{ flexGrow: 1 }}
-      columnWrapperStyle={{ flex: 1 }}
-      keyExtractor={item => `${item?._id}` }
-      renderItem={({ item } : { item: ProductService.ProductData }) => (
-        <TouchableOpacity onPress={() => {
-          console.log('click')
-          const s = products?.find(_s => _s === item?._id)
-          if (s) setProducts(_ss => _ss.filter(_s => _s !== item?._id))
-          else setProducts(_ss => [..._ss, item?._id])
-        }}>
-          <ImageBackground 
-            defaultSource={require('../../assets/images/default-product.jpg')}
-            source={{ uri: item?.uri }}
-            style={{ width: width/3, height: 160 }}
-          >
-            <View style={{ 
-              flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end',
-              backgroundColor: 'rgba(0,0,0,.1)', 
-              padding: 5,
-              borderWidth: 1, borderColor: colors.border, borderRadius: 2,
-            }}>
-              <View style={{ width: '100%', alignItems: 'flex-end', flexDirection: 'row', padding: 5 }}>
-                <Text numberOfLines={2} style={{ color: 'white', fontSize: 14, fontWeight: '500' }} >{item?.name}</Text>
-                <View style={{ 
-                  width: 30,
-                  height: 30, 
-                  borderRadius: 60,
-                  borderWidth: 2, borderColor: 'white',
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: products?.find(s => s === item?._id) ? colors.primary : 'transparent'
-                }}>
-                  {products?.find(s => s === item?._id) && <MaterialIcons name="check" size={20} color={'white'} />}
-                </View>
-              </View>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
-      )}
-    />
-  )
-}
-
-const SecondRoute: React.FC<{
-  data: Array<ProductService.ProductData>
-  products: Array<string>
-  setProducts: React.Dispatch<React.SetStateAction<string[]>>
-}> = ({
-  data, products, setProducts
-}) => {
-  const { colors } = useTheme()
-  const { width } = useWindowDimensions()
-
-  return (
-    <FlatList 
-      style={{ flex: 1 }}
-      numColumns={3}
-      data={data}
-      contentContainerStyle={{ flexGrow: 1 }}
-      columnWrapperStyle={{ flex: 1 }}
-      keyExtractor={item => `${item?._id}` }
-      renderItem={({ item } : { item: ProductService.ProductData }) => (
-        <TouchableOpacity onPress={() => {
-          console.log('click')
-          const s = products?.find(_s => _s === item?._id)
-          if (s) setProducts(_ss => _ss.filter(_s => _s !== item?._id))
-          else setProducts(_ss => [..._ss, item?._id])
-        }}>
-          <ImageBackground 
-            defaultSource={require('../../assets/images/default-product.jpg')}
-            source={{ uri: item?.uri }}
-            style={{ width: width/3, height: 160 }}
-          >
-            <View style={{ 
-              flex: 1, alignItems: 'flex-end', justifyContent: 'flex-end',
-              backgroundColor: 'rgba(0,0,0,.1)', 
-              padding: 5,
-              borderWidth: 1, borderColor: colors.border, borderRadius: 2,
-            }}>
-              <View style={{ width: '100%', alignItems: 'flex-end', flexDirection: 'row', padding: 5 }}>
-                <Text numberOfLines={2} style={{ color: 'white', fontSize: 14, fontWeight: '500' }} >{item?.name}</Text>
-                <View style={{ 
-                  width: 30,
-                  height: 30, 
-                  borderRadius: 60,
-                  borderWidth: 2, borderColor: 'white',
-                  alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: products?.find(s => s === item?._id) ? colors.primary : 'transparent'
-                }}>
-                  {products?.find(s => s === item?._id) && <MaterialIcons name="check" size={20} color={'white'} />}
-                </View>
-              </View>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
-    )}
-  />
-  )
-}

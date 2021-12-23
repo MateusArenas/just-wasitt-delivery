@@ -16,6 +16,7 @@ const ProfileCard: React.FC<{
   disabled?: boolean
   onPress?: () => any
   onPressIn?: () => any
+  size?: 'small' | 'medium' | 'large'
 }> = ({
   style,
   uri='https://static-images.ifood.com.br/image/upload/t_high/logosgde/e28dd736-aa7e-438b-be05-123e27b621bd/202103031043_txRd_i.jpg',
@@ -26,24 +27,28 @@ const ProfileCard: React.FC<{
   disabled,
   onPress,
   onPressIn,
+  size='medium'
 }) => {
   const { colors } = useTheme();
   
+  const length = size==='small'? 45 : size==='medium'? 90 : size==='large'?135 : 0; 
+
   return (
-        <View style={[{ backgroundColor: colors.card, flex: 1, paddingTop: 10, paddingLeft: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, style]}>
+        <View style={[{ flex: 1, paddingLeft: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, style]}>
           
           <TouchableOpacity onPress={onPressIn} >
-            <View style={{ margin: 10, borderRadius: 45, overflow: 'hidden' }}>
+            <View style={{ marginHorizontal: 10, borderRadius: 100, overflow: 'hidden'}}>
               <LinearGradient style={{ 
-                flexShrink: 1, padding: 2
+                flexShrink: 1, padding: 4
               }}
               start={{ x: 0.1, y: 0.2 }}
               end={{ x: 1, y: 0.8 }}
               colors={['orange', 'red']}
+              // colors={[colors.border, colors.primary]}
               >
                 {uri ? 
-                  <Image style={{ borderRadius: 45, borderWidth: 2, borderColor: colors.card }}
-                    source={{ uri, width: 90, height: 90 }} 
+                  <Image style={{ borderRadius:length, borderWidth: 4, borderColor: colors.background }}
+                    source={{ uri, width:length, height:length }} 
                   />
                 : <MaterialIcons name="account-circle" size={80} color={colors.text} />
                 }

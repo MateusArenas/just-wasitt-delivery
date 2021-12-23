@@ -3,10 +3,12 @@ import { useTheme } from '@react-navigation/native';
 import React from 'react';
 import { TextStyle, View, FlexStyle, TouchableOpacity, Text, StyleSheet, ColorValue, StyleProp, ViewStyle, TouchableOpacityProps } from 'react-native';
 import { capitalizeFisrtLetter } from '../../utils';
+import { Hoverable, Pressable, } from 'react-native-web-hover'
 
 interface CardLinkProps {
   style?: StyleProp<ViewStyle>
   title?: string | number
+  innerStyle?: StyleProp<ViewStyle>
   titleFontWeight?: TextStyle["fontWeight"]
   subTitle?: string | number
   subTitleStyle?: StyleProp<TextStyle>
@@ -20,11 +22,13 @@ interface CardLinkProps {
   color: ColorValue
   tintColor?: ColorValue
   border?: boolean | 'top' | 'bottom'
+  borderColor?: ColorValue
   left?: React.ReactNode
   center?: React.ReactNode
   right?: React.ReactNode
   touchable?: boolean
   titleDirection?: FlexStyle['flexDirection']
+  hoverBackgroundColor?: ColorValue
 }
 
 const CardLink: React.FC<CardLinkProps> = ({
@@ -32,6 +36,7 @@ const CardLink: React.FC<CardLinkProps> = ({
   subTitle, 
   color, 
   subTitleStyle={ color },
+  innerStyle={},
   tintColor, 
   border='bottom', 
   style, 
@@ -46,28 +51,42 @@ const CardLink: React.FC<CardLinkProps> = ({
   titleDirection='column',
   titleContainerStyle,
   titleFontWeight='normal',
-  titleContentContainerStyle={}
+  titleContentContainerStyle={},
+  borderColor,
+  hoverBackgroundColor,
 }) => {
   const { colors } = useTheme()
   return (
-    <View style={[styles.container, style ]}>
-      <CardLinkTouchable disabled={disabled} touchable={touchable} onPress={() => { onPress(); onPressed(); }}>
-        <View style={[styles.inner]}>
-          {left}
-          <View style={[styles.contentContainer, titleContentContainerStyle, { borderBottomWidth: (!!border && border !== 'top') ? 1 : 0, borderTopWidth: (!!border && border === 'top') ? 1 : 0 }, { borderColor: colors.border }]}>
-            <View style={[styles.titleContainer, titleContainerStyle]}>
-              <View style={{ padding: 10, paddingLeft: left ? 0 : 10, flexDirection: titleDirection }}>
-                {title && <Text numberOfLines={1} style={[styles.title, { color, fontWeight: titleFontWeight }]}>{capitalizeFisrtLetter(title)}</Text>}
-                {subTitle && <Text numberOfLines={1} style={[styles.subTitle, { color }, subTitleStyle]}>{capitalizeFisrtLetter(subTitle)}</Text>}
+    <ContainerHoverable touchable={touchable}>
+      {({ hovered }) => (
+        <View style={[styles.container, style, hovered && { backgroundColor: hoverBackgroundColor || colors.border }]}>
+          <CardLinkTouchable disabled={disabled} touchable={touchable} onPress={() => { onPress(); onPressed(); }}>
+            <View style={[styles.inner, innerStyle]}>
+              {left}
+              <View style={[styles.contentContainer, titleContentContainerStyle, { borderBottomWidth: (!!border && border !== 'top') ? 1 : 0, borderTopWidth: (!!border && border === 'top') ? 1 : 0 }, { borderColor: borderColor || colors.border }]}>
+                <View style={[styles.titleContainer, titleContainerStyle]}>
+                  <View style={{ padding: 10, paddingLeft: left ? 0 : 10, flexDirection: titleDirection }}>
+                    {!!title && <Text numberOfLines={1} style={[styles.title, { color, fontWeight: titleFontWeight }]}>{capitalizeFisrtLetter(title)}</Text>}
+                    {!!subTitle && <Text numberOfLines={1} style={[styles.subTitle, { color }, subTitleStyle]}>{capitalizeFisrtLetter(subTitle)}</Text>}
+                  </View>
+                </View>
+                {center}
+                {right}
               </View>
             </View>
-            {center}
-            {right}
-          </View>
+          </CardLinkTouchable>
         </View>
-      </CardLinkTouchable>
-    </View>
+      )}
+    </ContainerHoverable>
   )
+}
+
+const ContainerHoverable: React.FC<TouchableOpacityProps & { 
+  touchable: boolean, 
+  children?: ((props: any) => any) & React.ReactNode
+}> = ({ touchable, children, ...props }) => {
+  if (touchable) return <Hoverable {...props} children={children} />
+  else return <View>{typeof children === 'function' ? children({ hovered: false }) : children}</View>
 }
 
 const CardLinkTouchable: React.FC<TouchableOpacityProps & { touchable: boolean}> = ({ touchable, children, ...props }) => {
@@ -98,10 +117,9 @@ export default CardLink;
 
 const styles = StyleSheet.create({
   container: {
-
+    minHeight: 49,
   },
   inner: {
-    minHeight: 49,
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between',
@@ -114,7 +132,7 @@ const styles = StyleSheet.create({
   rightDefaultContainer: {
     flexDirection: 'row', 
     justifyContent: 'flex-end', alignItems: 'center', 
-    padding: 10,
+    paddingHorizontal: 10,
   },
   rightDefaultLabel: {
     opacity: .5, 

@@ -3,24 +3,35 @@ import { HeaderBackButton, StackScreenProps, useHeaderHeight } from '@react-navi
 import React, { useContext, useState } from 'react';
 import { View, StyleSheet, Button, TextInput, Text, useWindowDimensions, Image } from 'react-native';
 import { FlatList, ScrollView } from 'react-native-gesture-handler';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, SceneMap } from 'react-native-tab-view';
 import CustomTopTabBar from '../../components/CustomTopTabBar';
-import IconButton from '../../components/IconButton';
-import useLoadScreen from '../../hooks/useLoadScreen';
 import { StoreDate } from '../../services/store';
 import TextButton from '../../components/TextButton';
 import { RootStackParamList } from '../../types';
 import { getDay, parseISO, isAfter, setHours, setMinutes, compareDesc } from 'date-fns';
-import { isBefore } from 'date-fns/esm';
 import useStoreStatus from '../../hooks/useStoreStatus';
-import { MaterialIcons } from '@expo/vector-icons';
 import { writePrice } from '../../utils';
-import useService from '../../hooks/useService';
-import * as StoreService from '../../services/store';
 import AuthContext from '../../contexts/auth';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
+import { gql, NetworkStatus, useQuery } from '@apollo/client';
+import Loading from '../../components/Loading';
+
+const STORE_INFO = gql`
+query CurrentStore($matchName: String!) {
+  store(match: { name: $matchName }) {
+    _id, uri, name, about, self, city, state, 
+    user { _id, email }, cnpj,
+    delivery, deliveryTimeMin, 
+    creditPayments, mealTicketPayments,
+    minDeliveryBuyValue, 
+    monday, mondayStart, mondayEnd, tuesday, tuesdayStart, tuesdayEnd 
+    wednesday, wednesdayStart, wednesdayEnd, thursday, thursdayStart, thursdayEnd, 
+    friday, fridayStart, fridayEnd, saturday, saturdayStart, saturdayEnd 
+    sunday, sundayStart, sundayEnd
+  }
+}
+`;
 
 export default function StoreInfo({
   navigation,
@@ -34,13 +45,28 @@ export default function StoreInfo({
   const layout = useWindowDimensions()
   const { colors, dark } = useTheme()
   const { store } = route.params
-  const { 
-    response, 
-    error, 
-    loading, 
-    onRefresh 
-  } = useService<StoreService.StoreDate>(StoreService, 'index', { name: store })
-  const data: StoreDate = response?.data[0]
+
+  const { loading, error, data: curentStore, refetch, networkStatus } = useQuery(
+    STORE_INFO, 
+    { 
+      variables: { 
+        matchName: store
+      },
+      fetchPolicy: "network-only",
+      notifyOnNetworkStatusChange: true,
+      // pollInterval: 500,
+    }
+  )
+
+  const data = curentStore?.store
+
+  // const { 
+  //   response, 
+  //   error, 
+  //   loading, 
+  //   onRefresh 
+  // } = useService<StoreService.StoreDate>(StoreService, 'index', { name: store })
+  // const data: StoreDate = response?.data[0]
 
   const days = [
     { day: 'Domingo', start: data?.sundayStart, end: data?.sundayEnd, open: data?.saturday },
@@ -87,6 +113,8 @@ export default function StoreInfo({
       ),
     });
   }, [data]))
+
+  if (networkStatus === NetworkStatus.loading && loading) return <Loading />
 
   return (
     <TabView swipeEnabled
@@ -153,6 +181,7 @@ const SecondRoute = ({ data, extraTop }: { data: Array<{ day: string, start: str
       contentContainerStyle={{ paddingTop: top+extraTop, paddingBottom: bottom }}    
       scrollIndicatorInsets={{ top: top+extraTop, bottom }}  
       data={data}
+      keyExtractor={(item, index) => `${item?.day}-${index}`}
       renderItem={({ item, index }) => 
         <DayHour 
           closed={!isOpen}

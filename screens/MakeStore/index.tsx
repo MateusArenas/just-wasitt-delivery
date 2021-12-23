@@ -25,12 +25,17 @@ import KeyboardSpacer from '../../components/KeyboardSpacer';
 import useLoadScreen from '../../hooks/useLoadScreen';
 import CardLink from '../../components/CardLink';
 import BottomHalfModalContext from '../../contexts/BottomHalfModal';
+import TextInputCentered from '../../components/TextInputCentered';
+import ImagePicker from '../../components/ImagePicker';
+import InputTextArea from '../../components/InputTextArea';
 
 export default function MakeStore ({
   navigation,
   route
 }: StackScreenProps<RootStackParamList, 'MakeStore'>) {
   const top = useHeaderHeight()
+  const bottom = useContext(BottomTabBarHeightContext) || 0
+  const [extraBottom, setExtraBottom] = React.useState(70)
 
   const rootNavigation = useRootNavigation()
   const layout = useWindowDimensions()
@@ -69,26 +74,39 @@ export default function MakeStore ({
 
   const [index, setIndex] = React.useState(0)
   const [routes] = React.useState<Array<TabViewRouteProps>>([
-    { key: 'main', icon: 'menu', title: 'Principais' },
-    { key: 'image', icon: 'photo-camera', title: 'Foto' },
-    { key: 'config', icon: 'device-hub', title: 'Configurações' },
-    { key: 'andress', icon: 'location-on', title: 'Endereço' },
+    { key: 'main', title: 'Principais' ,icon: 'menu', important: true },
+    { key: 'config', icon: 'settings', title: 'Definições' },
+    { key: 'about', icon: 'public', title: 'Localizações', important: true },
   ])
 
   const renderScene = React.useCallback(({ route }) => {
     switch (route.key) {
       case 'main':
-        return <MainRoute state={state} onChangeState={setState} />
-      case 'image':
-        return <ImageRoute value={state?.uri} onChangeValue={uri => setState({...state, uri })} />
-      case 'andress':
-        return <FormAndress state={state} onChangeState={andress => setState({...state, ...andress})} />
+        return (
+          <InfoRoute values={{ name: state.name, uri: state?.uri, about: state?.about }}  
+            onChangeValues={({ name, about, uri }) => setState(state => ({ ...state, name, about, uri }))}
+          />
+        );
+      case 'about':
+          return (
+            <MoreRoute values={{ 
+              andress: { 
+                state: state?.state, city: state?.city, ceep: state?.ceep,
+                district: state?.district, street: state?.street, 
+                houseNumber: state?.houseNumber, complement: state?.complement 
+              }, 
+              phoneNumber: state?.phoneNumber, 
+              whatsappNumber: state?.whatsappNumber 
+            }} 
+              onChangeValues={({ andress, phoneNumber, whatsappNumber }) => setState(state => ({...state, ...andress, phoneNumber, whatsappNumber }))}
+            />
+          )
       case 'config': 
-        return <ConfigRoute state={state} onChangeState={setState} />
+        return <ConfigRoute state={state} onChangeState={config => setState(state => ({ ...state, ...config }))} />
       default:
         return null;
     }
-  }, [state, setState])
+  }, [state])
 
 
   const onSubmit = React.useCallback(async () => {
@@ -106,8 +124,6 @@ export default function MakeStore ({
   }, [onService, signed, state, id])
 
 
-  const BottomHalfModal = React.useContext(BottomHalfModalContext)
-
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
       title: data?.name ? data?.name : 'Nova Loja',
@@ -116,45 +132,38 @@ export default function MakeStore ({
           <TextButton style={{ paddingHorizontal: 20 }}
             label={'Concluir'}
             fontSize={16}
-            color={colors.primary}
-            // disabled={
-            //   !name || !percent
-            //   || !!data?.otherPromotions?.find(item => (item?.name === name && item?._id !== id)) 
-            // }
+            color={colors.text}
+            disabled={
+              !state?.name || !state?.phoneNumber ||
+              !state?.state || !state?.city || !state?.district || !state?.street || !state?.houseNumber 
+            }
             onPress={onSubmit}
           />
         </View>
       ),
     });
   }, [onSubmit, data]))
-
-  useFocusEffect(React.useCallback(() => {
-    navigation.setOptions({
-      headerRight: ({ tintColor }) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TextButton style={{ paddingHorizontal: 20 }}
-            label={'Confirmar'}
-            fontSize={14}
-            color={colors.primary}
-            onPress={onSubmit}
-          />
-        </View>
-      ),
-    });
-  }, [onSubmit]))
   
   if (loading) return <Loading />
   if (!response?.network) return <Refresh onPress={() => navigation.dispatch(StackActions.replace('MakeStore', { id }))}/>
   if (!response?.ok) return <NotFound title={`This Product doesn't exist.`} redirectText={`Go to home screen!`}/>
   
   return (
-    <TabView style={{ paddingTop: top }}
-      navigationState={{ index, routes }}
-      renderScene={renderScene}
-      onIndexChange={setIndex}
-      initialLayout={{ width: layout.width }}
-      renderTabBar={props => <CustomTopTabBar {...props}/>}
-    />
+    <View style={{ flex: 1 }}>
+      <TabView style={{ paddingTop: top }} tabBarPosition="bottom"
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={{ width: layout.width }}
+        renderTabBar={props => (
+          <CustomTopTabBar {...props}
+            style={{ backgroundColor: colors.border }}
+            onLayout={e => setExtraBottom(e?.nativeEvent?.layout?.height)} 
+          />
+        )}
+      />
+      <KeyboardSpacer topSpacing={-(bottom+extraBottom)} />
+    </View>
   );
 };
 
@@ -164,112 +173,14 @@ interface RouteProps {
   onChangeState: (state: StoreService.StoreDate) => any
 }
 
-const MainRoute: React.FC<RouteProps> = ({ state, onChangeState }) => {
-  const top = useHeaderHeight()
-  const bottom = useContext(BottomTabBarHeightContext) || 0
-  const { colors } = useTheme()
-
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView focusable
-        contentContainerStyle={{ paddingBottom: bottom }}
-        scrollIndicatorInsets={{ top, bottom }}
-        keyboardDismissMode={'none'}
-        keyboardShouldPersistTaps={'handled'}
-        style={{ flex: 1, padding: 10, backgroundColor: colors.card }}
-      >
-        <TextInputLabel 
-          label={'Nome'}
-          color={colors.text} 
-          placeholder="Nome da loja..." 
-          value={state?.name} 
-          onChangeText={name => onChangeState(({ ...state, name }))}
-        />
-        <TextInputLabel 
-          label={'Sobre'}
-          color={colors.text} 
-          placeholder="Sobre a loja..." 
-          value={state?.about} 
-          onChangeText={about => onChangeState(({ ...state, about }))}
-        />
-        <TextInputLabel 
-          type={'cel-phone'}
-          options={{
-            maskType: 'BRL',
-            withDDD: true,
-            dddMask: '(99) '
-          }}
-          label={'Numero de telefone'}
-          color={colors.text} 
-          placeholder="Numero de telefone da loja..." 
-          value={state?.phoneNumber} 
-          onChangeText={phoneNumber => onChangeState({ ...state, phoneNumber })}
-        />
-        <TextInputLabel 
-          type={'cel-phone'}
-          options={{
-            maskType: 'BRL',
-            withDDD: true,
-            dddMask: '(99) '
-          }}
-          label={'Numero do whatsapp'}
-          color={colors.text} 
-          placeholder="Numero do Whatsapp da loja..." 
-          value={state?.whatsappNumber} 
-          onChangeText={whatsappNumber => onChangeState({ ...state, whatsappNumber })}
-        />
-      </ScrollView>
-      <KeyboardSpacer topSpacing={-bottom} />
-    </View>
-  )
-}
-
-
-const ImageRoute: React.FC<{
-  value: string
-  onChangeValue: (uri: string) => any
-}> = ({ value, onChangeValue }) => {
-  const { colors } = useTheme()
-  return (
-    <View style={{ flex: 1, height: 250, alignItems: 'center', justifyContent: 'center' }}>
-      <TouchableOpacity onPress={async () => {
-        const uri = await Clipboard.getString()
-        onChangeValue(uri)
-      }}>
-        {!value ? <MaterialIcons 
-          style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200 }}
-          name="photo-camera"
-          size={24*4}
-          color={colors.border}
-        /> : 
-        <View style={{ padding: 20, borderColor: colors.border, borderWidth: 4, borderRadius: 200, overflow: 'hidden' }}>
-          <Image source={{ uri: value, width: 24*4, height: 24*4 }} style={{ borderRadius: 200 }}/>
-        </View>
-        }
-      </TouchableOpacity>
-      <TouchableOpacity onPress={async () => {
-        const uri = await Clipboard.getString()
-        onChangeValue(uri)
-      }}>
-        <Text style={{ 
-          color: colors.primary, 
-          fontWeight: '500', 
-          fontSize: 16, padding: 10
-        }}>{'Alterar Imagem'}</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-
 const ConfigRoute: React.FC<RouteProps> = ({ state, onChangeState }) => {
   const [bottomTabBarHeight, setBottomTabBarHeight] = React.useState(0)
   const layout = useWindowDimensions()
   const [index, setIndex] = React.useState(0)
-  const [routes] = React.useState([
-    { key: 'delivery', title: 'Entrega' },
-    { key: 'horary', title: 'Horario' },
-    { key: 'payment', title: 'Pagamento' },
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'delivery', title: 'Entrega', icon: 'delivery-dining' },
+    { key: 'horary', title: 'Horario', icon: 'timer' },
+    { key: 'payment', title: 'Pagamento', icon: 'payment' },
   ])
 
   const renderScene = React.useCallback(({ route }) => {
@@ -286,13 +197,13 @@ const ConfigRoute: React.FC<RouteProps> = ({ state, onChangeState }) => {
   }, [state, onChangeState, bottomTabBarHeight])
 
   return (
-    <TabView tabBarPosition="bottom"
+    <TabView tabBarPosition="top"
       navigationState={{ index, routes }}
       renderScene={renderScene}
       onIndexChange={setIndex}
       initialLayout={{ width: layout.width }}
       renderTabBar={props => 
-        <CustomBottomTabBar {...props}
+        <CustomTopTabBar {...props}
           onLayout={e => setBottomTabBarHeight(e.nativeEvent?.layout?.height)}
         />
       }
@@ -309,7 +220,8 @@ const HoraryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBarH
       <ScrollView focusable
         keyboardDismissMode={'none'}
         keyboardShouldPersistTaps={'handled'}
-        style={{ flex: 1, padding: 10, backgroundColor: colors.card }}
+        style={{ flex: 1, padding: 10 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         <InputCheck
           label={`Domingo ${ state?.sunday ? '(aberto)' : '(fechado)'}`}
@@ -487,7 +399,7 @@ const HoraryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBarH
           />
         </View>
       </ScrollView>
-      <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} />
+      {/* <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} /> */}
     </View>
   )
 }
@@ -503,7 +415,8 @@ const DeliveryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBa
       <ScrollView focusable
         keyboardDismissMode={'none'}
         keyboardShouldPersistTaps={'handled'}
-        style={{ flex: 1, padding: 10, backgroundColor: colors.card }}
+        style={{ flex: 1, padding: 10 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         <InputCheck
           label="Retirada na loja"
@@ -575,7 +488,7 @@ const DeliveryRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBa
               onChangeText={(_, rawText) => onChangeState({ ...state, minDeliveryBuyValue: Number(rawText) })}
             />
       </ScrollView>
-      <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} />
+      {/* <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} /> */}
     </View>
   )
 }
@@ -590,7 +503,8 @@ const PaymentRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBar
       <ScrollView focusable
         keyboardDismissMode={'none'}
         keyboardShouldPersistTaps={'handled'}
-        style={{ flex: 1, padding: 10, backgroundColor: colors.card }}
+        style={{ flex: 1, padding: 10 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         <InputCheck
           label="Pagamento em dinheiro"
@@ -721,7 +635,128 @@ const PaymentRoute: React.FC<RouteProps> = ({ state, onChangeState, bottomTabBar
           </View>
         </TouchableOpacity>
       </ScrollView>
-      <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} />
+      {/* <KeyboardSpacer topSpacing={-(topSpacing+bottomTabBarHeight)} /> */}
     </View>
+  )
+}
+
+const InfoRoute: React.FC<{ 
+  values: { name: string, uri: string, about: string }
+  onChangeValues: (values: { name: string, uri: string, about: string }) => any
+}> = ({ values: { name, uri, about }, onChangeValues }) => {
+  const { colors } = useTheme()
+  const layout = useWindowDimensions()
+
+  const [index, setIndex] = React.useState(0)
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'name', icon: 'drive-file-rename-outline', title: 'Nome', important: true },
+    { key: 'image', icon: 'wallpaper', title: 'Imagem' },
+    { key: 'about', icon: 'short-text', title: 'Sobre' },//monry-off receipt
+  ])
+
+  const renderScene = React.useCallback(({ route }) => {
+    switch (route.key) {
+      case 'name':
+        return (
+          <TextInputCentered style={{ color: colors.text }}
+            placeholderTextColor={colors.text}
+            placeholder={'Loja'}
+            maxLength={20}
+            value={name}
+            onChangeText={name => onChangeValues({ name, uri, about })}
+          />
+        )
+      case 'image':
+        return <ImagePicker value={uri} onChangeValue={uri => onChangeValues({ name, uri, about })} />
+      case 'about':
+        return (
+          <InputTextArea containerStyle={{ flex: 1, alignItems: 'flex-start',  padding: 20, justifyContent: 'center' }}
+            infoStyle={{ position: 'absolute', bottom: 0, right: 0, padding: 10 }}
+            style={{ 
+              width: '100%', height: '100%',
+              padding: 10,
+              color: colors.text,
+              fontSize: 18, fontWeight: '500',
+              maxHeight: null, minHeight: null
+            }}
+            placeholderTextColor={colors.text}
+            placeholder={"Escreva algo sobre a loja..."}
+            maxLength={66}
+            value={about}  
+            onChangeText={about => onChangeValues({ name, uri, about })}
+          />
+        )
+      default:
+        return null;
+    }
+  }, [name, about, uri])
+
+  return (
+    <TabView swipeEnabled tabBarPosition="top"
+      navigationState={{ index, routes }}
+      renderScene={renderScene}
+      onIndexChange={setIndex}
+      initialLayout={{ width: layout.width }}
+      renderTabBar={props => <CustomTopTabBar {...props} />}
+    />
+  )
+}
+
+
+const MoreRoute: React.FC<{ 
+  values: { andress: object, phoneNumber: string, whatsappNumber: string, }
+  onChangeValues: (values: { andress: object, phoneNumber: string, whatsappNumber: string, }) => any
+}> = ({ values: { andress, phoneNumber, whatsappNumber }, onChangeValues }) => {
+  const { colors } = useTheme()
+  const layout = useWindowDimensions()
+
+  const [index, setIndex] = React.useState(0)
+  const [routes] = React.useState<Array<TabViewRouteProps>>([
+    { key: 'andress', icon: 'location-on', title: 'Endereço', important: true },
+    { key: 'phoneNumber', icon: 'phone', title: 'Telefone', important: true },
+    { key: 'whatsappNumber', icon: 'chat', title: 'Whatsapp' },//monry-off receipt
+  ])
+
+  const renderScene = React.useCallback(({ route }) => {
+    switch (route.key) {
+      case 'andress':
+        return (
+          <FormAndress state={andress} onChangeState={andress => onChangeValues({ andress, phoneNumber, whatsappNumber })} />
+        )
+      case 'phoneNumber':
+        return (
+          <TextInputCentered type={'cel-phone'} style={{ color: colors.text }}
+            placeholderTextColor={colors.text}
+            placeholder={'Telefone'}
+            maxLength={15}
+            showToMaxLength={false}
+            value={phoneNumber}
+            onChangeText={phoneNumber => onChangeValues({ andress, phoneNumber, whatsappNumber })}
+          />
+        )
+      case 'whatsappNumber':
+        return (
+          <TextInputCentered type={'cel-phone'} style={{ color: colors.text }}
+            placeholderTextColor={colors.text}
+            placeholder={'Whatsapp'}
+            maxLength={15}
+            showToMaxLength={false}
+            value={whatsappNumber}
+            onChangeText={whatsappNumber => onChangeValues({ andress, phoneNumber, whatsappNumber })}
+          />
+        )
+      default:
+        return null;
+    }
+  }, [andress, phoneNumber, whatsappNumber])
+
+  return (
+    <TabView swipeEnabled tabBarPosition="top"
+      navigationState={{ index, routes }}
+      renderScene={renderScene}
+      onIndexChange={setIndex}
+      initialLayout={{ width: layout.width }}
+      renderTabBar={props => <CustomTopTabBar {...props} />}
+    />
   )
 }

@@ -9,6 +9,7 @@ interface errorData { error: string }
 
 export interface ProductData {
   self?: boolean
+  slug: string
   _id: string
   user: string & userData
   store: string & StoreDate //_id

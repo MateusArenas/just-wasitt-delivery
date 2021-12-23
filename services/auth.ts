@@ -1,5 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
 import { AxiosError, AxiosResponse } from "axios"
 import api from "./api"
+import apollo from './apollo'
 import { StoreDate } from "./store"
 
 interface errorData { error: string }
@@ -32,7 +35,7 @@ interface authenticateResponseData {
 export async function authenticate (body: { email: string, password: string }) {
   try {
     const response = await api.post(`/authenticate`, body)
-    if (response?.data) saveToken(response?.data?.token)
+    if (response?.data) await saveToken(response?.data?.token)
     return Promise.resolve(response as AxiosResponse<authenticateResponseData>)
   } catch(err) { 
     return Promise.reject(err as AxiosError<errorData>)
@@ -42,15 +45,16 @@ export async function authenticate (body: { email: string, password: string }) {
 export async function register (body: { email: string, password: string, name: string }) {
   try {
     const response = await api.post(`/register`, body)
-    if (response?.data) saveToken(response?.data?.token)
+    if (response?.data) await saveToken(response?.data?.token)
     return Promise.resolve(response as AxiosResponse<authenticateResponseData>)
   } catch(err) { 
     return Promise.reject(err as AxiosError<errorData>)
   } 
 }
 
-export function saveToken (token: string) {
+export async function saveToken (token: string) {
   api.defaults.headers.authorization = `Bearer ${token}`
+  await AsyncStorage.setItem('token', token)
 }
 
 export function useCanToken () {

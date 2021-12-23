@@ -15,7 +15,6 @@ const InputCheck: React.FC<{
     <TouchableOpacity style={style} onPress={onPress}>
       <View style={{ 
         width: "100%", 
-        backgroundColor: colors.card,
         flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start'
       }}>
         <MaterialIcons style={{ padding: 10, opacity: check ? 1 : .8 }}

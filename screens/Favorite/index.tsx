@@ -19,6 +19,8 @@ import useLoadScreen from '../../hooks/useLoadScreen';
 import { writePrice } from '../../utils';
 import useRootNavigation from '../../hooks/useRootNavigation';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { useFavorite } from '../../hooks/useFavorite';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 export default function Favorite({
   navigation,
@@ -33,18 +35,29 @@ export default function Favorite({
   const { user } = useContext(AuthContext)
   const { colors } = useTheme()
 
-  const { 
-    disabled,
-    response, 
-    loading, 
-    onLoading,
+  const {
+    data,
+    loading,
+    missing,
     refreshing,
-    onService, 
-    onRefresh 
-  } = useLoadScreen<FavoriteService.FavoriteData>(async () => await FavoriteService.all({ userId: user?._id }))
-  useEffect(() => { if(user) onLoading() }, [user])
+    onRefresh,
+    onChangeFavorite,
+    onCreateFavorite,
+    onRemoveFavorite,
+  } = useFavorite()
 
-  const data: Array<FavoriteService.FavoriteData> = response?.data.flat() as any
+  // const { 
+  //   disabled,
+  //   response, 
+  //   loading, 
+  //   onLoading,
+  //   refreshing,
+  //   onService, 
+  //   onRefresh 
+  // } = useLoadScreen<FavoriteService.favoriteData>(async () => await FavoriteService.all({ userId: user?._id }))
+  // useEffect(() => { if(user) onLoading() }, [user])
+
+  // const data: Array<FavoriteService.favoriteData> = response?.data.flat() as any
 
   const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
@@ -149,35 +162,63 @@ export default function Favorite({
     }
   }
 
+  const snackbar = useSnackbar()
+
   async function onClear (selecteds: Array<string>) {
     try {
+      const items = selecteds?.map(id => data?.find(item => item?._id === id))
       selecteds.map(onRemove)
       setSelecteds([])
       setEditMode(false)
+      snackbar?.open({
+        visible: true,
+        autoHidingTime: 5000,
+        messageColor: colors.text,
+        position: "bottom",
+        badge: selecteds?.length,
+        badgeColor: 'white',
+        badgeBackgroundColor: colors.notification,
+        textMessage: selecteds?.map(id => {
+          const find = data?.find(item => item?._id === id)
+          return `${find?.store?.name}`
+        })?.join(', '),
+        actionHide: true,
+        actionHandler: () => onRestore(items),
+        actionText: "DESFAZER",
+        accentColor: colors.primary,
+      })
+    } catch (err) {}
+  }
+
+  const onRestore = async (items) => {//arrumar
+    try {
+      await Promise.all(items?.map(async item => {
+        const body = ({
+          _id: item?._id,
+          store: item?.store,
+          product: item?.product?._id,
+        })
+        await onCreateFavorite(body)
+        return item
+      })) 
     } catch (err) {}
   }
 
   async function onRemove (_id :string ) {
     const store = data?.find(item => item?._id === _id)?.store 
     try {
-      await onService(async () => {
-        try {
-          await FavoriteService.remove({ store, _id, userId: user?._id })
-          return response.data?.map(items => items?.filter(item => item?._id !== _id))
-        } catch (err) {}
-      })
-      rootNavigation.refresh('Root')
+      await onRemoveFavorite({ store, _id })
     } catch (err) {}
   }
 
   if (loading) return <Loading />
-  if (!response?.network) return <Refresh onPress={() => navigation.replace('Favorite')}/>
-  if (!response?.ok) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
+  // if (!response?.network) return <Refresh onPress={() => navigation.replace('Favorite')}/>
+  if (missing) return <NotFound title={`This Category doesn't exist.`} redirectText={`Go to home screen!`}/>
 
   return (
       <PullToRefreshView
         offset={top}
-        disabled={editMode || disabled}
+        disabled={editMode || loading}
         refreshing={refreshing}
         onRefresh={onRefresh}
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -196,12 +237,12 @@ export default function Favorite({
             }
             keyExtractor={(item, index) => `${item?._id}-${index}`}
             ItemSeparatorComponent={() => <View style={{ height: 1, width: '100%', backgroundColor: colors.border }}/>}
-            renderItem={({ item } : { item: FavoriteService.FavoriteData }) => (
+            renderItem={({ item } : { item: FavoriteService.favoriteData }) => (
               <CartBag 
                 editMode={editMode}
                 selected={(!!selecteds?.find(id => id === item?._id) && editMode)}
                 onPress={() => editMode ? onSelected(item?._id) 
-                  : navigation.navigate('Product', { store: item?.store, id: item?.product?._id })
+                  : navigation.navigate('Product', { store: item?.store, slug: item?.product?.slug })
                 }
                 uri={item?.product?.uri}
                 name={item?.product?.name}

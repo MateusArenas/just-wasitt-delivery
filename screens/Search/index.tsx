@@ -208,13 +208,13 @@ const ProductsRoute: React.FC<ProductsRouteProps> = ({
         <FlatList
           ListHeaderComponentStyle={{ padding: 10 }}
           ListHeaderComponent={
-            <Text style={{ 
+            !!title ? <Text style={{ 
               fontSize: 36, color: colors.text, fontWeight: '500',
               padding: 10, 
               borderBottomWidth: 1, borderColor: colors.border
             }}>
               {title}
-            </Text>
+            </Text> : <></>
           } 
           contentContainerStyle={{ flexGrow: 1 }}
           ListEmptyComponent={
@@ -243,11 +243,11 @@ const ProductsRoute: React.FC<ProductsRouteProps> = ({
               onPress={() => {
                 switch (type !== 'all' ? type : item?.type) {
                   case 'product':
-                    return navigation.navigate('Product', { id: item?._id, store: item?.store?.name })
+                    return navigation.navigate('Product', { slug: item?.slug, store: item?.store?.name })
                   case 'category':
-                    return navigation.navigate('Category', { id: item?._id, store: item?.store?.name })
+                    return navigation.navigate('Category', { slug: item?.slug, store: item?.store?.name })
                   case 'promotion':
-                    return navigation.navigate('Promotion', { id: item?._id, store: item?.store?.name })
+                    return navigation.navigate('Promotion', { slug: item?.slug, store: item?.store?.name })
                   case 'store':
                     return navigation.navigate('Store', { store: item?.name })
                   default:

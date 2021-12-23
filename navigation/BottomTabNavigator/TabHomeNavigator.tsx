@@ -1,24 +1,34 @@
 import * as React from 'react';
 
 import { createStackNavigator, HeaderTitle, StackScreenProps } from "@react-navigation/stack"
-import { BottomTabParamList, TabHomeParamList } from "../../types"
+import { BottomTabParamList, RootStackParamList, TabHomeParamList } from "../../types"
 
 import HomeScreen from '../../screens/Home'
-import IconButton from '../../components/IconButton';
-import useRootNavigation from '../../hooks/useRootNavigation';
 import { useFocusEffect, useTheme } from '@react-navigation/native';
 import AuthContext from '../../contexts/auth';
-import { writeAndress } from '../../utils';
 import { TouchableWithoutFeedback, Image, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { View } from '../../components/Themed';
-import SearchTabNavigator from '../SearchTabNavigator';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useSetSnackBottomOffset } from '../../hooks/useSnackbar';
+import Store from '../../screens/Store';
+import Product from '../../screens/Product';
+import Feedbacks from '../../screens/Feedbacks';
+import NewFeedback from '../../screens/NewFeedback';
+import Bag from '../../screens/Bag';
+import Checkout from '../../screens/Checkout';
+import Favorite from '../../screens/Favorite';
+import Saved from '../../screens/Saved';
+import Followers from '../../screens/Followers';
+import Products from '../../screens/Products';
+import Offers from '../../screens/Offers';
+import Category from '../../screens/Category';
+import StoreInfo from '../../screens/StoreInfo';
+import Promotion from '../../screens/Promotion';
+import Categories from '../../screens/Categories';
+import { buildTitle } from '../../utils';
 
-const TabHomeStack = createStackNavigator<TabHomeParamList>()
+const Stack = createStackNavigator<TabHomeParamList>()
 
 function TabHomeNavigator({ 
   navigation,
@@ -45,9 +55,10 @@ function TabHomeNavigator({
   const { colors, dark } = useTheme();
 
   return (
-    <TabHomeStack.Navigator headerMode="screen"
+    <Stack.Navigator headerMode="screen"
       initialRouteName="Main"
       screenOptions={{ 
+        cardStyle: { flex: 1, backgroundColor: colors.background },
         headerTintColor: colors.text,
         headerStyle: { elevation: 0, shadowColor: 'transparent', borderBottomWidth: .2, borderColor: colors.border },
         headerBackTitleVisible: false,
@@ -58,7 +69,7 @@ function TabHomeNavigator({
         ),
       }}
     >
-      <TabHomeStack.Screen
+      <Stack.Screen
         name="Main"
         component={HomeScreen}
         initialParams={{ category: route.params?.category }}
@@ -66,7 +77,25 @@ function TabHomeNavigator({
           title: 'Wassit',
         }}
       />
-    </TabHomeStack.Navigator>
+
+      <Stack.Screen name="Categories" component={Categories} options={({ route }) => ({ title: `#${route.params?.category}` })} />
+
+      <Stack.Screen name="Store" component={Store} options={({ route }) => ({  title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="StoreInfo" component={StoreInfo} options={({ route }) => ({ title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="Product" component={Product} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Products" component={Products} options={({ route }) => ({ title: buildTitle('Catálogo') })} />
+      <Stack.Screen name="Category" component={Category} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Promotion" component={Promotion} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Offers" component={Offers} options={({ route }) => ({ title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="Followers" component={Followers} options={{ title: buildTitle('Seguidores') }} />
+      <Stack.Screen name="Feedbacks" component={Feedbacks} options={{ title: buildTitle('Feedbacks') }} />
+      <Stack.Screen name="NewFeedback" component={NewFeedback} options={{ title: buildTitle('Novo Feedback') }} />
+      <Stack.Screen name="Bag" component={Bag} options={{ title: buildTitle('Sacola') }} />
+      <Stack.Screen name="Checkout" component={Checkout} options={{ title: buildTitle('Checagem') }} />
+      <Stack.Screen name="Saved" component={Saved} options={{ title: buildTitle('Salvos') }} />
+      <Stack.Screen name="Favorite" component={Favorite} options={{ title: buildTitle('Favoritos') }} />
+
+    </Stack.Navigator>
   );
 }
 

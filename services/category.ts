@@ -10,13 +10,16 @@ export interface CategoryData {
   self?: boolean
   otherCategories?: Array<{ _id: string, name: string }>
   _id: string
+  uri?: string
+  about?: string
   user: string & userData
   store: string & StoreDate
   name: string
+  slug: string
   products: Array<string & ProductData>
 }
 
-export async function index ({ store, ...params } : { store: string, params: any }) {
+export async function index ({ store, ...params } : { store: string, params?: any }) {
   try {
     const response = await api.get(`/store/${store}/categories`, { params })
     return Promise.resolve(response as AxiosResponse<Array<CategoryData>>)
@@ -35,7 +38,7 @@ export async function search ({ store, id, params } : { store: string, id: strin
 }
 
 
-export async function create ({ store, body }: { store: string, body: CategoryData }) {
+export async function create ({ store, body }: { store: string, body: Partial<CategoryData> }) {
   try {
     const response = await api.post(`/store/${store}/categories`, body)
     return Promise.resolve(response as AxiosResponse<Array<CategoryData>>)
@@ -44,7 +47,7 @@ export async function create ({ store, body }: { store: string, body: CategoryDa
   } 
 }
 
-export async function update ({ id, store, body }: { id: string, store: string, body: CategoryData }) {
+export async function update ({ id, store, body }: { id: string, store: string, body: Partial<CategoryData> }) {
   try {
     const response = await api.put(`/store/${store}/categories/${id}`, body)
     return Promise.resolve(response as AxiosResponse<Array<CategoryData>>)

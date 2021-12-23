@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet, Animated, Easing, LogBox, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Animated, Easing, LogBox, Platform, StyleProp, ViewStyle } from 'react-native';
 import { useTheme } from '@react-navigation/native'
 import { UIActivityIndicator } from 'react-native-indicators';
 
 interface LoadingProps {
   animating?: boolean
   hidesWhenStopped?: boolean
-  size?: 'small' | 'large'
+  size?: 'small' | 'large' | 'tiny'
   color?: string
   pulse?: boolean
+  style?: StyleProp<ViewStyle>
 }
 
 const Loading: React.FC<LoadingProps> = ({ 
@@ -17,6 +18,7 @@ const Loading: React.FC<LoadingProps> = ({
   size='large',
   color=null,
   pulse=true,
+  style,
 }) => {
   const { colors } = useTheme()
   const anim = React.useRef(new Animated.Value(0)).current
@@ -35,7 +37,7 @@ const Loading: React.FC<LoadingProps> = ({
   React.useEffect(() => { pulse && animate(Easing.elastic(4)) }, [animate, pulse])
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <Animated.View style={{ 
         transform: [{ 
           scale: anim.interpolate({
@@ -51,7 +53,7 @@ const Loading: React.FC<LoadingProps> = ({
         <UIActivityIndicator 
           hidesWhenStopped={hidesWhenStopped} 
           animating={animating} 
-          size={size === 'small' ? 26 : size === 'large' ? 36 : 26} 
+          size={size === 'small' ? 26 : size === 'large' ? 36 : size === 'tiny' ? 24 : 26} 
           count={12} 
           color={color ? color : colors.text}
         />

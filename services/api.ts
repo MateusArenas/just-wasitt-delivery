@@ -6,8 +6,8 @@ const api = axios.create({
   // baseURL: 'http://192.168.0.101:3333/', // this is localhost (multlaszer)
   
   // validateStatus: function () { return true; }
-  // baseURL: 'http://10.0.0.13:3000', // this is localhost (telenews)
-  baseURL: 'http://192.168.0.105:3000',
+  baseURL: 'http://api.wasitt.com', // this is localhost (telenews)
+  // baseURL: 'http://192.168.0.101:3000',
    // this is localhost
   headers: {
     'Access-Control-Allow-Origin': '*',

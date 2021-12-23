@@ -42,26 +42,32 @@ import Offers from '../screens/Offers';
 import SnackBarContext, { SnackBarProvider } from '../contexts/snackbar';
 import { useSetSnackBottomOffset } from '../hooks/useSnackbar';
 import { BagProvider } from '../contexts/bag';
+import { SavedProvider } from '../contexts/saved';
+import { FavoriteProvider } from '../contexts/favorite';
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
       <ThemeProvider theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}>
         <AuthProvider>
-          <BagProvider>
-            <AndressProvider>
-              <NavigationContainer
-                linking={LinkingConfiguration}
-                theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}
-                fallback={Loading}
-              >
-                <SnackBarProvider>
-                  <BottomHalfModalProvider>
-                    <RootNavigator />
-                  </BottomHalfModalProvider>
-                </SnackBarProvider>
-              </NavigationContainer>
-            </AndressProvider>
-          </BagProvider>
+          <SavedProvider>
+            <FavoriteProvider>
+              <BagProvider>
+                <AndressProvider>
+                  <NavigationContainer
+                    linking={LinkingConfiguration}
+                    theme={Colors[colorScheme === 'dark' ? 'dark' : 'light']}
+                    fallback={Loading}
+                  >
+                    <SnackBarProvider>
+                      <BottomHalfModalProvider>
+                        <RootNavigator />
+                      </BottomHalfModalProvider>
+                    </SnackBarProvider>
+                  </NavigationContainer>
+                </AndressProvider>
+              </BagProvider>
+            </FavoriteProvider>
+          </SavedProvider>
         </AuthProvider>
       </ThemeProvider>
   );
@@ -76,7 +82,6 @@ function RootNavigator() {
 
   return (
     <Stack.Navigator initialRouteName={'Root'}
-      headerMode={'screen'} mode={'modal'}
       screenOptions={{  
         headerTintColor: colors.text,
         cardStyle: { backgroundColor: colors.background, flex: 1 },
@@ -85,95 +90,16 @@ function RootNavigator() {
         headerBackImage: ({ tintColor }) => <MaterialIcons name="chevron-left" size={24*1.5} color={tintColor} />,
         headerTransparent: true,
         headerBackground: ({ style }) => (
-          <BlurView style={[style, { flex: 1 }]} intensity={100} tint={dark ? 'dark' : 'light'} />
+          <View style={{ flex: 1, zIndex: 2, }} >
+            <BlurView style={{ flex: 1 }} 
+              intensity={100} tint={dark ? 'dark' : 'light'} 
+            />
+          </View>
         ),
       }}
     >
       <Stack.Screen name="Root" options={{ headerShown: false }} component={BottomTabNavigator} />
-      
-      <Stack.Screen 
-        name="Store" 
-        component={Store} 
-        options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Store'> ) => ({
-          title: route.params.store,
-        })} 
-      />
-
-      <Stack.Screen 
-        name="Offers" 
-        component={Offers} 
-        options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Offers'> ) => ({
-          title: route.params.store,
-        })} 
-      />
-
-      <Stack.Screen 
-        name="StoreInfo" 
-        component={StoreInfo}
-        options={({ navigation, route } : StackScreenProps<RootStackParamList, 'StoreInfo'> ) => ({
-          title: route.params.store,
-        })} 
-      />
-
-      <Stack.Screen 
-        name="Product" 
-        component={Product}
-        options={{ 
-          title: 'Produto'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Promotion" 
-        component={Promotion}
-        options={{ 
-          title: 'Promoção',
-        }}
-      />
-
-      <Stack.Screen 
-        name="Category" 
-        component={Category}
-        options={{ 
-          title: 'Categoria',
-        }}
-      />
-
-      <Stack.Screen 
-        name="Products" 
-        component={Products}
-        options={({ navigation, route } : StackScreenProps<RootStackParamList, 'Products'> ) => ({ 
-          title: 'Publicações',
-        })}
-      />
-
-
       <Stack.Screen name="Andress" component={AndressScreen}/>
-      <Stack.Screen name="Account" component={AccountScreen} />
-      
-      {/* <Stack.Screen 
-        name="Checkout" 
-        component={CheckoutStackNavigator} 
-        options={{
-          title: 'Checkout'
-        }}
-      /> */}
-
-      <Stack.Screen 
-        name="Followers" 
-        component={Followers} 
-        options={{
-          title: 'Seguidores'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Feedbacks" 
-        component={Feedbacks} 
-        options={{
-          title: 'Feedbacks'
-        }}
-      />
 
       <Stack.Screen 
         name="Orders" 
@@ -188,46 +114,6 @@ function RootNavigator() {
         component={Order} 
         options={{
           title: 'Pedido'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Bag" 
-        component={Bag} 
-        options={{
-          title: 'Sacola'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Checkout" 
-        component={Checkout} 
-        options={{
-          title: 'Checagem'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Saved" 
-        component={Saved} 
-        options={{
-          title: 'Salvos'
-        }}
-      />
-
-      <Stack.Screen 
-        name="Favorite" 
-        component={Favorite} 
-        options={{
-          title: 'Favoritos'
-        }}
-      />
-
-      <Stack.Screen 
-        name="NewFeedback" 
-        component={NewFeedback} 
-        options={{
-          title: 'Novo Feedback'
         }}
       />
 

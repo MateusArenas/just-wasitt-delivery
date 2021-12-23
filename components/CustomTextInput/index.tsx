@@ -18,26 +18,27 @@ const CustomTextInput: React.FC<TextInputLabelProps> = React.forwardRef(({ type=
   React.useImperativeHandle(ref, () => TextInputRef.current)
   
   const { colors } = useTheme()
+
+  React.useEffect(() => {
+    console.log({ value: props?.value });
+  }, [props?.value])
+
+  if (type === 'default') return <TextInput ref={TextInputRef} {...props}/>
+
+  if (type === 'fake') return (
+    <TouchableHighlight onPress={() => { props.onFocus(null as any) }}>
+      <View style={[props?.style, { justifyContent: 'center' }]}>
+        <Text style={[{ minHeight: 'auto' }, { 
+          color: colors.border
+        }, props?.style]}>
+          {props?.value ? props?.value : props?.placeholder}
+        </Text>
+      </View>
+    </TouchableHighlight>
+  )
   
-  switch (type) {
-    case 'default':
-      return <TextInput ref={TextInputRef} {...props}/>
-    case 'fake':
-      return (
-        <TouchableHighlight onPress={() => { props.onFocus(null as any) }}>
-          <View style={[props?.style, { justifyContent: 'center' }]}>
-            <Text style={[{ minHeight: 'auto' }, { 
-              color: props?.value ? props?.style?.color : colors.border
-            }]}>
-              {props?.value ? props?.value : props?.placeholder}
-            </Text>
-          </View>
-        </TouchableHighlight>
-      )
-      default:
-        return <TextInputMask {...props} type={type} />
-    }
-  })
+  return <TextInputMask type={type} {...props} />
+})
 
     
   export default CustomTextInput;

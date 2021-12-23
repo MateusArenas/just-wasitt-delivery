@@ -1,4 +1,4 @@
-import { StackScreenProps, useHeaderHeight } from "@react-navigation/stack";
+import { HeaderTitle, StackScreenProps, useHeaderHeight } from "@react-navigation/stack";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Text, useWindowDimensions, Animated, FlatList, StyleProp, ViewStyle } from 'react-native';
 import { View } from "react-native";
@@ -25,6 +25,36 @@ import { useDebounce } from "../../hooks/useDebounce";
 import api from "../../services/api";
 import { AxiosError } from "axios";
 import { PullToRefreshView } from "../../components/PullToRefreshView";
+import { gql, NetworkStatus, useQuery } from "@apollo/client";
+import HeaderSubTitle from "../../components/HeaderSubTitle";
+import CatalogTemplate from "../../templates/Catalog";
+import BottomHalfModalBoard from "../../components/BottomHalfModalBoard";
+import BottomHalfModalContext from "../../contexts/BottomHalfModal";
+
+const NUM_ITEMS_PER_PAGE = 6;
+const PRODUCTS = gql`
+query CurrentProducts(
+  $name: String,
+  $storeName: ID!,
+  $offset: Int!,
+  $limit: Int!,
+  $regex: [String],
+) {
+  totalCount(
+    model: "product", 
+    match: { store: { name: $storeName }, name: $name },
+    options: { skip: $offset, limit: $limit, regex: $regex } 
+  )
+
+  products (
+    match: { store: { name: $storeName }, name: $name }, 
+    options: { skip: $offset, limit: $limit, regex: $regex } 
+  ) { 
+    _id, uri, name, about, price, offset, single, slug,
+    promotions { _id, name, percent  }
+  }
+}
+`;
 
 export default function Products ({
   navigation,
@@ -51,136 +81,92 @@ export default function Products ({
     scrollIndicatorInsetTop,
     translateY,
   } = useCollapsibleSubHeader()
-
-  const [loading, setLoading] = React.useState(false)
-  const [refreshing, setRefreshing] = React.useState(false)
-  const [network, setNetwork] = React.useState(true)
-  const [notFound, setNotFound] = React.useState(false)
-  const [products, setProducts] = React.useState<Array<ProductData>>([])
-  const [page, setPage] = React.useState(1)
-  const [total, setTotal] = React.useState(0)
-
-  const loadPage = React.useCallback(async (pageNumber = page, shouldRefresh=false) => {
-    if (total && pageNumber > total) return;
-    setLoading(true)
-    try {
-      setNetwork(true)
-      const params = { name: search, skip: (pageNumber-1)*5, limit: 5 }
-      const response = await api.get(`/store/${store}/products`, { params })
   
-      const totalCount = Number(response.headers['x-total-count'])
-  
-      setTotal(Math.ceil(totalCount / 5))
-      
-      setProducts(state => 
-        shouldRefresh ? response?.data
-        : [...state, ...response?.data]
-      )
-      setNotFound(response?.data?.length > 0 ? false : true)
-  
-      setPage(pageNumber + 1)
-    } catch ({ response }) {
-      if (response?.status === 404) {
-        setNotFound(true)
-        setProducts([])
-      }
-      if (!response) setNetwork(false)
-    } finally {
-      setLoading(false)
+  const { called, loading, error, data, refetch, fetchMore, networkStatus } = useQuery(
+    PRODUCTS, 
+    { 
+      variables: {
+        storeName: store,
+        name: search,
+        regex: ["name"], 
+        offset: 0, 
+        limit: NUM_ITEMS_PER_PAGE, 
+      },
+      notifyOnNetworkStatusChange: true,
     }
-  }, [page, total, search, setPage, setProducts, setTotal, setNetwork, setNotFound, setLoading])
+  )
 
-  async function onRefresh () {
-    setRefreshing(true)
+  useEffect(() => { refetch() }, [search])
 
-    await loadPage(1, true)
-
-    setRefreshing(false)
+  function loadPagination () {
+    if (!loading && (data?.products?.length < data?.totalCount)) { 
+      fetchMore({
+        variables: { 
+          offset: data?.products?.length,
+        }
+      })
+    }
   }
-  
-  React.useEffect(() => {
-    loadPage(1, true)
-  }, [search])
+
+  const BottomHalfModal = React.useContext(BottomHalfModalContext)
 
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
+      headerTitle: props => 
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <HeaderSubTitle onPress={() => navigation.navigate('Store', { store })}>{store}</HeaderSubTitle>
+          <HeaderTitle {...props}>{'Catálogo'}</HeaderTitle>
+        </View>
+      ,
       headerRight: ({ tintColor }) => (
-        <View style={{ alignItems: 'center', flexDirection: 'row' }}>
+        <View style={{ alignItems: 'center', flexDirection: 'row', paddingHorizontal: 10 }}>
           <IconButton 
-            name="store"
+            name="shopping-bag"
             size={24}
             color={colors.text}
-            onPress={() => navigation.navigate('Store', { store })}
+            onPress={() => navigation.navigate('Bag', { store })}
           />
           <IconButton 
-            name="more-vert"
+            name="more-horiz"
             size={24}
             color={colors.text}
-            onPress={() => {}}
+            onPress={() => BottomHalfModal.show(modalize => (
+                <BottomHalfModalBoard 
+                  boardData={[
+                    { icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => navigation.navigate('Store', { store })},
+                    { icon: 'link', color: colors.text, title: 'Link', onPress: () => navigation.navigate('Store', { store })},
+                    { icon: 'store', color: colors.text, title: store, onPress: () => navigation.navigate('Store', { store }) },
+                  ]}
+                  onClose={modalize?.current?.close}
+                />
+              )
+            )}
           />
         </View>
       ),
     });
   }, [navigation, colors]))
 
-  if (!network) return <Refresh onPress={() => navigation.replace('Products', { store })}/>
+  // if (!network) return <Refresh onPress={() => navigation.replace('Products', { store })}/>
 
   return (
     <View style={{ flex: 1 }}>
         <PullToRefreshView
           offset={containerPaddingTop-10}
-          disabled={refreshing}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
+          disabled={(networkStatus === NetworkStatus.refetch && loading)}
+          refreshing={(networkStatus === NetworkStatus.refetch && loading)}
+          onRefresh={refetch}
           style={{ flex: 1, backgroundColor: colors.background }}
         >
-          <FlatList ref={ref}
-            style={{ padding: 2 }}
-            ListEmptyComponent={
-              loading ? <Loading /> :
-              notFound && <View style={{ 
-                flex: 1, alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Text style={{ 
-                  textAlign: 'center', textAlignVertical: 'center',
-                  fontSize: 18, 
-                  color: colors.text, opacity: .5,
-                }}>{'Nenhum resultado'}</Text>
-              </View>
-            }
-            ListFooterComponentStyle={{ padding: 20 }}
-            ListFooterComponent={(loading && products?.length > 0) && <Loading />}
-            onEndReached={() => loadPage()}
-            onEndReachedThreshold={0.1}
-            onScroll={onScroll}
-            contentContainerStyle={{ flexGrow: 1, paddingTop: containerPaddingTop, paddingBottom: bottom }}
-            scrollIndicatorInsets={{ top: containerPaddingTop, bottom }}
-            data={products}
-            numColumns={2}
-            columnWrapperStyle={{ flex: 1 }}
-            keyExtractor={(item, index) => `${item?._id}-${index}`}
-            renderItem={({ item } : { item: ProductData }) => (
-              <View style={{ width: (width/2) - 2, padding: 2 }}>
-                <Product 
-                  store={store}
-                  data={{...item, about: null}}
-                  height={width/3} 
-                  onPress={() => navigation.navigate('Product', { id: item?._id, store })}
-                  />
-              </View>
-            )}
+            <CatalogTemplate store={store}
+              data={data?.products}
+              handleProduct={params => navigation.navigate('Product', params)}
+              loading={loading} loadPagination={loadPagination}
+              networkStatus={networkStatus}
+              text={name}
+              onChangeText={setName}
             />
         </PullToRefreshView>
-      <KeyboardSpacer topSpacing={-bottom} />
-      <CollapsibleSubHeaderAnimator translateY={translateY}>
-        <View style={{ padding: 20, marginTop: top }}>
-        {/* <Text>{products?.length}</Text> */}
-          <SearchBar autoFocus placeholder={'Buscar por nome de publicações'}
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-      </CollapsibleSubHeaderAnimator>
     </View>
   )
 }

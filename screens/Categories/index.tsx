@@ -102,7 +102,7 @@ export default function Categories({
                         <CardLink style={{ backgroundColor: colors.card }}
                           border={(response?.data?.length-1) !== index}
                           subTitle={category?.name}
-                          onPress={() => navigation.navigate('Category', { id: category?._id, store: category?.store?.name })}
+                          onPress={() => navigation.navigate('Category', { slug: category?.slug, store: category?.store?.name })}
                           color={colors.text}
                           rightLabel={(props.paginationIndex+1) + ' / ' + props.size}
                           center={
@@ -123,17 +123,17 @@ export default function Categories({
                     data={category?.products}
                     renderItem={({ item: product }) => 
                       <View style={{ width: width }}>
-                        <Product store={category?.store?.name} data={product} onPress={() => navigation.navigate('Product', { id: product?._id, store: category?.store?.name })}/>
+                        <Product store={category?.store?.name} data={product} onPress={() => navigation.navigate('Product', { slug: product?.slug, store: category?.store?.name })}/>
                         
                         <View style={{ paddingHorizontal: 10, backgroundColor: colors.card, flexDirection: 'row' }}>
                           {[].concat(
                             product?.categories?.map(item => ({ 
                               _id: item?._id, name: `#${item?.name}`,
-                              onPress: () => navigation.navigate('Category', { store: category?.store?.name, id: item?._id })
+                              onPress: () => navigation.navigate('Category', { store: category?.store?.name, slug: item?.slug })
                             }))).concat( 
                               product?.promotions?.map(item => ({ 
                               _id: item?._id, name: `%${item?.name}`,
-                              onPress: () => navigation.navigate('Promotion', { store: category?.store?.name, id: item?._id })
+                              onPress: () => navigation.navigate('Promotion', { store: category?.store?.name, slug: item?.slug })
                             }))
                           )?.map(item => (
                             <TouchableOpacity key={item?._id} onPress={item?.onPress}>

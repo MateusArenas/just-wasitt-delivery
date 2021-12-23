@@ -20,6 +20,7 @@ interface InputCountProps {
   increaseIcon?: React.ComponentProps<typeof MaterialIcons>['name']
   tintColor?: ColorValue
   disabled?: boolean
+  numberFontWeight?: TextStyle['fontWeight']
 }
 
 const InputCount: React.FC<InputCountProps> = ({ 
@@ -33,7 +34,8 @@ const InputCount: React.FC<InputCountProps> = ({
   increaseIcon="add",
   tintColor,
   children,
-  disabled=false
+  disabled=false,
+  numberFontWeight="500"
 }) => {
   const { colors } = useTheme()
 
@@ -75,7 +77,7 @@ const InputCount: React.FC<InputCountProps> = ({
 
       {(!binarySwitch && value !== 0)&& <View style={{ flexDirection: 'row' }}>
         {children}
-        {!children && <Number style={{ color: tintColor ? tintColor : colors?.text, fontWeight: '500' }}>
+        {!children && <Number style={{ color: tintColor ? tintColor : colors?.text, fontWeight: numberFontWeight, padding: 10 }}>
           {value}
         </Number>}
       </View>}

@@ -14,7 +14,7 @@ export interface bagData {
   bundles: Array<bundleData>
 }
 
-const VERSION = '5.2'
+const VERSION = '5.3'
 
 export async function index ({ userId } : { userId: string }) : Promise<AxiosResponse<Array<bagData>>> {
   try {

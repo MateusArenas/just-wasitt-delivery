@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { StackActions, useFocusEffect, useTheme } from '@react-navigation/native';
-import { StackScreenProps, useHeaderHeight } from '@react-navigation/stack';
+import { StackScreenProps, useHeaderHeight, } from '@react-navigation/stack';
 import React, { useContext, useEffect } from 'react';
 import { Image, View, Text, Button, FlatList } from 'react-native';
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
@@ -73,6 +73,9 @@ export default function Account({
       headerTitle: ({ tintColor, ...props }) => (
         <View style={{ display: 'flex', flexDirection: 'row', }}>
           <IconButton style={{ padding: 0 }}
+            fontSize={18}
+            textOpacity={1}
+            fontWeight={'500'}
             label={user?._id ? user?.name ? user?.name : user?.email : 'Visitante'} 
             name="expand-more" color={colors.text} size={24}
             onPress={() => BottomHalfModal.show(modalize => 
@@ -225,7 +228,7 @@ export default function Account({
               }}>
                 <ProfileCard style={{ 
                   paddingVertical: 10,
-                  borderBottomWidth: 1, borderTopWidth: .5, borderColor: colors.border  
+                  // borderBottomWidth: 1, borderTopWidth: .5, borderColor: colors.border  
                 }}
                   uri={user?.uri}
                   statusColor={colors.primary}
@@ -239,7 +242,7 @@ export default function Account({
                 />
 
                 <View style={{ 
-                  marginTop: 20, marginBottom: -20,
+                  // marginTop: 20, marginBottom: -20,
                   flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' 
                 }}>
                   
@@ -323,8 +326,7 @@ export default function Account({
                 </View>
               </View>
             }
-            data={
-              signed ? 
+            data={signed ? 
               [
                 [
                   { icon: "favorite", color: '#ff345b', title: 'lista de desejos', onPress: () => navigation.navigate('Favorite') },
@@ -347,20 +349,25 @@ export default function Account({
                   { icon: "help-outline", color: '#ffc601', title: 'ajuda', onPress: () => {} },
                   { icon: "lock-outline", color: '#09ada0', title: 'segurança', onPress: () => {} }
                 ]
-              ]
-            }
+              ]}
             //  as  Array<{ icon: React.ComponentProps<typeof MaterialIcons>['name'], title: string, onPress: any }>}
              renderItem={({ item: section }) => (
               <View style={{ 
-                backgroundColor: colors.card,
-                borderTopWidth: 1, borderBottomWidth: 1, 
-                borderColor: colors.border,
-                marginTop: 40 
+                marginBottom: 15 
               }}>
                 {section?.map((item, index) => <CardLink key={`${item?.title}-${index}`}
+                  style={{
+                    backgroundColor: colors.card,
+                    borderTopLeftRadius: (index === 0) ? 10 : 0, borderTopRightRadius: (index === 0) ? 10 : 0,
+                    borderBottomLeftRadius: (index === (section?.length-1)) ? 10 : 0, 
+                    borderBottomRightRadius: (index === (section?.length-1)) ? 10 : 0,
+                    marginTop: (index === 0) ? 10 : 1,
+                    marginBottom: (index === (section?.length-1)) ? 10 : 1,
+                    marginHorizontal: 10,
+                }}
                   title={item?.title}
                   color={colors.text}
-                  border={(section?.length-1) !== index}
+                  border={false}
                   onPress={item?.onPress}
                   tintColor={colors.border}
                   left={

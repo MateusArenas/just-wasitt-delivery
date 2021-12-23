@@ -1,6 +1,6 @@
-import { StackScreenProps, useHeaderHeight } from "@react-navigation/stack";
+import { HeaderTitle, StackScreenProps, useHeaderHeight } from "@react-navigation/stack";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Text, useWindowDimensions, Animated } from 'react-native';
+import { Text, useWindowDimensions, Animated, ScrollView, Platform } from 'react-native';
 import { TextInput, View, FlatList } from "react-native";
 import {  TouchableOpacity } from "react-native-gesture-handler";
 import Card from "../../components/Card";
@@ -28,6 +28,15 @@ import { CategoryData } from "../../services/category";
 import * as CategoryService from '../../services/category';
 import { PullToRefreshView } from "../../components/PullToRefreshView";
 import { MaterialIcons } from "@expo/vector-icons";
+import HeaderSubTitle from "../../components/HeaderSubTitle";
+import BottomHalfModalBoard from "../../components/BottomHalfModalBoard";
+import gql from "graphql-tag";
+import { useQuery, useLazyQuery, NetworkStatus, useMutation } from "@apollo/client";
+import { CATEGORY, REMOVE_CATEGORY } from "./graphql";
+import { STORE_NAME } from "../Store/graphql";
+import CatalogTemplate from "../../templates/Catalog";
+
+const NUM_ITEMS_PER_PAGE = 6;
 
 export default function Category ({
   navigation,
@@ -45,280 +54,117 @@ export default function Category ({
   const { colors } = useTheme()
   const rootNavigation = useRootNavigation()
   const { width } = useWindowDimensions()
-  const { store, id } = route.params
-  const BottomHalfModal = React.useContext(BottomHalfModalContext)
+  const { store, slug } = route.params
 
-  const [name, setName] = useState('')
+  const [name, setName] = useState("")
 
   const search = useDebounce(name, 250)
 
-  const {
-    onScroll,
-    containerPaddingTop,
-    scrollIndicatorInsetTop,
-    translateY,
-  } = useCollapsibleSubHeader()
-
-  const [loading, setLoading] = React.useState(false)
-  const [refreshing, setRefreshing] = React.useState(false)
-  const [network, setNetwork] = React.useState(true)
-  const [notFound, setNotFound] = React.useState(false)
-  const [category, setCategory] = React.useState<CategoryData>({} as CategoryData)
-  const [products, setProducts] = React.useState<Array<ProductData>>([])
-  const [page, setPage] = React.useState(1)
-  const [total, setTotal] = React.useState(0)
-
-  const loadPage = React.useCallback(async (pageNumber = page, shouldRefresh=false) => {
-    if (total && pageNumber > total) return;
-    setLoading(true)
-    try {
-      setNetwork(true)
-      const params = { search, skip: (pageNumber-1)*5, limit: 5 }
-      const response = await api.get(`/store/${store}/categories/${id}`, { params })
-  
-      const totalCount = Number(response.headers['x-total-count'])
-  
-      setTotal(Math.ceil(totalCount / 5))
-
-      setCategory(response?.data)
-      setProducts(state => 
-        shouldRefresh ? response?.data?.products
-        : [...state, ...response?.data?.products]
-      )
-      setNotFound(response?.data?.products?.length > 0 ? false : true)
-        
-      setPage(pageNumber + 1)
-    } catch ({ response }) {
-      if (response?.status === 404) {
-        setNotFound(true)
-        setProducts([])
-      }
-      if (!response) setNetwork(false)
-    } finally {
-      setLoading(false)
+  const { called, loading, error, data, refetch, fetchMore, networkStatus } = useQuery(
+    CATEGORY, 
+    { 
+      variables: {
+        slug,
+        name: search,
+        regex: ["name"], 
+        offset: 0, 
+        limit: NUM_ITEMS_PER_PAGE, 
+      },
+      notifyOnNetworkStatusChange: true,
     }
-  }, [page, total, search, setPage, setCategory, setProducts, setTotal, setNetwork, setNotFound, setLoading])
+  )
 
-  async function onRefresh () {
-    setRefreshing(true)
+  useEffect(() => { refetch() }, [search])
 
-    await loadPage(1, true)
-
-    setRefreshing(false)
+  function loadPagination () {
+    if (!loading && (data?.products?.length < data?.totalCount)) { 
+      fetchMore({
+        variables: { 
+          offset: data?.products?.length,
+        }
+      })
+    }
   }
-  
-  React.useEffect(() => {
-    loadPage(1, true)
-  }, [search])
 
-  
+  const [mutateFunction, { loading: preparing, error: err  }] = useMutation(REMOVE_CATEGORY, {
+    refetchQueries: [
+      STORE_NAME, // DocumentNode object parsed with gql
+      'CurrentStore' // Query name
+    ],
+  });
+
   async function onRemove () {
     try {
-      await CategoryService.remove({ store, id })
-      navigation.replace('Store', { store })
-    } catch(err) {
-
-    }
+      await mutateFunction({ variables: { id: data?.category?._id } })
+      navigation.goBack()
+    } catch(err) {}
   }
 
+  const BottomHalfModal = React.useContext(BottomHalfModalContext)
+  
   useFocusEffect(React.useCallback(() => {
     navigation.setOptions({
-      title: category?.name,
-      // headerTitle: ({ tintColor, children }) => (
-      //   <IconButton style={{ padding: 0 }}
-      //     label={children} 
-      //     name="expand-more" color={colors.text} size={24}
-      //     onPress={() => BottomHalfModal.show(modalize => 
-      //       <FlatList 
-      //         data={[
-      //           ...category?.otherCategories?.map(({ _id, name }) => ({
-      //             key: _id,
-      //             color: colors.text,
-      //             title: name,
-      //             onPress: () => navigation.replace('Category', { store, id: _id })
-      //           })) || [],
-      //           { key: 'footer', color: colors.primary, title: 'Criar Categoria', onPress: () => rootNavigation.navigate('MakeCategory', { store })},
-      //         ]}
-      //         keyExtractor={(item, index) => `${item?.key}-${index}`}
-      //         renderItem={({ item }) => 
-      //           <CardLink 
-      //             title={item?.title}
-      //             color={item?.color}
-      //             onPress={item?.onPress}
-      //             onPressed={modalize?.current?.close}
-      //           />
-      //         }
-      //       />  
-      //     )} 
-      //   />
-      // ),
-      headerRight: ({tintColor}) => (
-        <View style={{ alignItems: 'center', flexDirection: 'row' }}>
+      headerTitle: props => 
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <HeaderSubTitle onPress={() => navigation.navigate('Store', { store })}>{store}</HeaderSubTitle>
+          <HeaderTitle {...props} >{data?.category?.name}</HeaderTitle>
+        </View>
+      ,
+      headerRight: ({ tintColor }) => (
+        <View style={{ alignItems: 'center', flexDirection: 'row', paddingHorizontal: 10 }}>
+          <IconButton 
+            name="shopping-bag"
+            size={24}
+            color={colors.text}
+            onPress={() => navigation.navigate('Bag', { store })}
+          />
           <IconButton 
             name="more-horiz"
             size={24}
             color={colors.text}
-            onPress={() => BottomHalfModal.show(modalize => 
-              <FlatList 
-                ListHeaderComponentStyle={{ padding: 5 }}
-                ListHeaderComponent={
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    {[
-                      { key: 1, icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => navigation.navigate('MakeProduct', { store, id })},
-                      { key: 2, icon: 'link', color: colors.text, title: 'Link', onPress: () => navigation.navigate('MakeProduct', { store, id })},
-                      { key: 3, icon: 'sim-card-alert', color: 'red', title: 'Denunciar', onPress: () => {} },
-                    ].map(item => (
-                      <View style={{ 
-                        padding: 10, paddingTop: 0,
-                        flexGrow: 1, borderRadius: 10, backgroundColor: colors?.card,
-                        marginHorizontal: 5, alignItems: 'center', 
-                      }}>
-                        <IconButton style={{ padding: 20 }}
-                          name={item?.icon as any}
-                          size={24}
-                          color={item?.color}
-                          onPress={item?.onPress}
-                          onPressed={modalize?.current?.close}
-                        />
-                        <Text style={{ color: item?.color, fontSize: 12, 
-                          position: 'absolute', bottom: 10
-                        }}>{item?.title}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  // <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>{'Produto'}</Text>
-                }
-                data={
-                  category?.self ? [
-                    { key: 0, icon: 'add-circle-outline', color: colors.primary, title: 'Criar', onPress: () => navigation.navigate('MakeProduct', { store })},
-                    { key: 1, icon: 'edit', color: colors.text, title: 'Editar', onPress: () => navigation.navigate('MakeCategory', { store, id })},
-                    { key: 2, icon: 'delete', color: 'red', title: 'Remover', onPress: async function onRemove () {
-                      try {
-                        await CategoryService.remove({ store, id })
-                        navigation.replace('Store', { store })
-                      } catch(err) {
-                  
-                      }
-                    } },
-                  ] : []
-                }
-                contentContainerStyle={{ flexGrow: 1 }}
-                keyExtractor={item => `${item?.key}`}
-                renderItem={({ item, index }) => 
-                  <CardLink style={{
-                      backgroundColor: colors.card,
-                      borderTopLeftRadius: index === 0 ? 10 : 0, borderTopRightRadius: index === 0 ? 10 : 0,
-                      borderBottomLeftRadius: index === 2 ? 10 : 0, borderBottomRightRadius: index === 2 ? 10 : 0,
-                      marginTop: index === 0 ? 10 : 0, marginBottom: index === 2 ? 10 : 0,
-                      marginHorizontal: 10,
-                    }}
-                    border={index !== 2}
-                    titleContainerStyle={{ padding: 10 }}
-                    title={item?.title}
-                    right={
-                      <MaterialIcons style={{ padding: 20 }}
-                        name={item?.icon as any}
-                        size={24}
-                        color={item?.color}
-                      />
-                    }
-                    color={item?.color}
-                    onPress={item?.onPress}
-                    onPressed={modalize?.current?.close}
-                  />
-                }
-                ListFooterComponent={
-                  <View>
-                    <CardLink border={false}
-                      style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
-                      titleContainerStyle={{ padding: 10 }}
-                      title={store}
-                      right={
-                        <MaterialIcons style={{ padding: 20 }}
-                          name={'store'}
-                          size={24}
-                          color={colors.text}
-                        />
-                      }
-                      color={colors.text}
-                      onPress={() => navigation.navigate('Store', { store })}
-                      onPressed={modalize?.current?.close}
-                    />
-                    <CardLink border={false}
-                      style={{ margin: 10, borderRadius: 10, backgroundColor: colors.card  }}
-                      titleContainerStyle={{ alignItems: 'center' , padding: 10 }}
-                      title={'Cancelar'}
-                      right={null}
-                      color={colors.text}
-                      onPress={modalize?.current?.close}
-                    />
-                  </View>
-                }
+            onPress={() => BottomHalfModal.show(modalize =>
+              <BottomHalfModalBoard rendered={{ data: data?.category?.self }}
+                onClose={modalize?.current?.close}
+                boardData={[
+                  { icon: 'share', color: colors.text, title: 'Compartilhar', onPress: () => {} },
+                  { icon: 'link', color: colors.text, title: 'Link', onPress: () => {} },
+                  { icon: 'store', color: colors.text, title: store, onPress: () => navigation.navigate('Store', { store }) },
+                ]}
+                data={[
+                  { icon: 'add-circle-outline', color: colors.primary, hover: colors.primary, title: 'Criar', onPress: () => navigation.navigate('MakeCategory', { store })},
+                  { icon: 'edit', color: colors.text, title: 'Editar', onPress: () => navigation.navigate('MakeCategory', { store, slug })},
+                  { icon: 'delete', color: colors.notification, hover: colors.notification, title: 'Remover', onPress: onRemove },
+                ]}
               />
             )} 
           />
         </View>
       ),
     });
-  }, [navigation, category]))
+  }, [navigation, data]))
 
-  if (!network) return <Refresh onPress={() => navigation.replace('Promotion', { store, id })}/>
-  
+  const web = Platform.OS === 'web';
+
+  if (preparing) return <Loading />
+
   return (
     <View style={{ flex: 1 }}>
       <PullToRefreshView
-          offset={containerPaddingTop-10}
-          disabled={refreshing}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
+          offset={top}
+          disabled={(networkStatus === NetworkStatus.refetch && loading)}
+          refreshing={(networkStatus === NetworkStatus.refetch && loading)}
+          onRefresh={refetch}
           style={{ flex: 1, backgroundColor: colors.background }}
-        >
-          <FlatList ref={FlatListRef}
-            style={{ padding: 2 }}
-            ListEmptyComponent={
-              loading ? <Loading /> :
-              notFound && <View style={{ 
-                flex: 1, alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Text style={{ 
-                  textAlign: 'center', textAlignVertical: 'center',
-                  fontSize: 18, 
-                  color: colors.text, opacity: .5,
-                }}>{'Nenhum resultado'}</Text>
-              </View>
-            }
-            ListFooterComponentStyle={{ padding: 20 }}
-            ListFooterComponent={(loading && products?.length > 0) && <Loading />}
-            onEndReached={() => loadPage()}
-            onEndReachedThreshold={0.1}
-            onScroll={onScroll}
-            contentContainerStyle={{ flexGrow: 1, paddingTop: containerPaddingTop, paddingBottom: bottom }}
-            scrollIndicatorInsets={{ top: containerPaddingTop, bottom }}
-            data={products}
-            numColumns={2}
-            columnWrapperStyle={{ flex: 1 }}
-            keyExtractor={(item, index) => `${item?._id}-${index}`}
-            renderItem={({ item } : { item: ProductData }) => (
-              <View style={{ width: (width/2) - 2, padding: 2 }}>
-                <Product 
-                  store={store}
-                  data={{...item, about: null}}
-                  height={width/3} 
-                  onPress={() => navigation.navigate('Product', { id: item?._id, store })}
-                  />
-              </View>
-            )}
+          >
+            <CatalogTemplate store={store}
+              data={data?.products}
+              handleProduct={params => navigation.navigate('Product', params)}
+              loading={loading} loadPagination={loadPagination}
+              networkStatus={networkStatus}
+              text={name}
+              onChangeText={setName}
             />
         </PullToRefreshView>
-      <KeyboardSpacer topSpacing={-bottom} />
-      <CollapsibleSubHeaderAnimator translateY={translateY}>
-        <View style={{ padding: 20, marginTop: top }}>
-          <SearchBar placeholder={'Buscar por nome de produtos'}
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-      </CollapsibleSubHeaderAnimator>
     </View>
   )
 }

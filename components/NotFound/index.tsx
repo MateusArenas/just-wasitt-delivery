@@ -1,15 +1,23 @@
 import { StackActions, useTheme } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/stack';
 import * as React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import useRootNavigation from '../../hooks/useRootNavigation';
+
+interface NotFoundProps {
+  title: string 
+  redirectText: string
+  onPress?: () => any
+}
 
 export default function NotFound({
   title,
   redirectText,
   onPress,
-}: { title: string, redirectText: string, onPress?: () => any }) {
+}: NotFoundProps) {
   const rootNavigation = useRootNavigation()
   const { colors } = useTheme()
+  
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
@@ -30,6 +38,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '500',
+    textAlign: 'center'
   },
   link: {
     marginTop: 15,
@@ -39,5 +48,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#2e78b7',
+    textAlign: 'center'
   },
 });

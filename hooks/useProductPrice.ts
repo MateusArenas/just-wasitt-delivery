@@ -29,7 +29,7 @@ export function useProductValue (product: ProductData, notPromotion?: boolean) {
 export function useProductAdditionals (data: bundleData) {
     return (data?.components?.length > 0) ?
     data?.components?.map(({ product, quantity, components: byComponents }) => {  
-     const byProduct = data?.product.products?.find(item => item?._id === product?._id)
+     const byProduct = data?.product?.products?.find(item => item?._id === product?._id)
  
      const subAdditionals = byComponents?.map(({ product: sub, quantity: subQuantity }) => {  
        const subProduct = byProduct?.products?.find(item => item?._id === sub?._id)

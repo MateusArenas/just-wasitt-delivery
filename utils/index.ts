@@ -1,5 +1,10 @@
 import { Linking } from "react-native"
+import { MaskService } from "react-native-masked-text"
 import { AndressData } from "../services/andress"
+
+export function buildTitle (route: string) {
+  return `${route} • Wasitt`
+}
 
 export const getAndress = (params: Partial<AndressData>) : AndressData => ({
   _id: params?._id,
@@ -119,4 +124,42 @@ ${isDelivery ?
 `
 
   return order
+}
+
+
+
+export const memorize = callback => {
+	const cache = {};
+	
+	return (...args) => {
+		const argString = JSON.stringify(args)
+
+		if (!cache[argString]) {
+			cache[argString] = callback(...args);
+		}
+		
+		return cache[argString]
+	}
+}
+
+//example for using memorize
+// const factorial = memorize(n => {
+// 	if (n === 0) return 1;
+// 	else return (factorial(n-1) * n)
+// })
+
+// console.time();
+// console.log(factorial(100));
+// console.timeEnd();
+
+
+export function formatedMoney (value: number = 0) : string {
+  const moneyOptions = {
+    precision: 2,
+    separator: ',',
+    delimiter: '.',
+    unit: 'R$ ',
+    suffixUnit: ''
+  }
+  return  MaskService.toMask('money', (value ? value : 0) as unknown as string, moneyOptions)
 }

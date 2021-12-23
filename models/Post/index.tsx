@@ -42,7 +42,7 @@ const Post: React.FC<PostProps> = ({ data }) => {
                   alignItems: 'center',
                 }}>
                   <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                    <TouchableWithoutFeedback onPress={() => rootNavigation.navigate('Category', { store: data?.store?.name, id: data?._id })}>
+                    <TouchableWithoutFeedback onPress={() => rootNavigation.navigate('Category', { store: data?.store?.name, id: data?.slug })}>
                       <Text numberOfLines={1} style={{ fontWeight: '500', color: colors.primary, fontSize: 14 }}>{'ver categoria'}</Text>
                     </TouchableWithoutFeedback>
                   </View>
@@ -72,7 +72,7 @@ const Post: React.FC<PostProps> = ({ data }) => {
             centerContent
             renderItem={({ item }) => 
               <View style={{ width: width-20, paddingHorizontal: 10, borderRadius: 4, overflow: 'hidden' }}>
-                <Product store={data?.store?.name} data={item} onPress={() => navigation.navigate('Product', { id: item?._id, store: data?.store?.name })}/>
+                <Product store={data?.store?.name} data={item} onPress={() => navigation.navigate('Product', { slug: item?.slug, store: data?.store?.name })}/>
               </View>
             }
           />

@@ -25,6 +25,7 @@ import CardLink from '../../components/CardLink';
 import AndressContext from '../../contexts/andress';
 import KeyboardSpacer from '../../components/KeyboardSpacer';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import useLoadScreen from '../../hooks/useLoadScreen';
 
 export default function Andress ({ 
   navigation,
@@ -40,14 +41,31 @@ export default function Andress ({
   const { user, signed } = useContext(AuthContext)
   const { selected, andress, andresses, selectIn, selectUp, refresh } = useContext(AndressContext)
   const [state, setState] = useState<AndressData>(null)
+  
+  // const { 
+  //   response, 
+  //   loading,
+  //   refreshing, 
+  //   onRefresh,
+  //   onLoading,
+  //   disabled
+  // } = useLoadScreen<userData>(async () => await UserService.search())
+
+  // useEffect(() => { if(signed) onLoading(); }, [signed])
 
   useEffect(() => {
-    if(id) setState(andresses?.find(item => item?._id === id))
+    if(id) {
+      setState(andresses?.find(item => item?._id === id))
+    }
   } ,[setState, andresses])
 
   const onSubmit = useCallback(() => {
-    if (id) selectIn(state?._id)
-    else selectUp(state)
+    if (id) {
+      selectIn(state?._id)
+      // UserService.update({ body: state })
+    } else {
+      selectUp(state)
+    }
 
     if(navigation.canGoBack()) navigation.goBack()
   }, [state, selectUp, selectIn])
@@ -59,7 +77,7 @@ export default function Andress ({
       headerTitle: ({ tintColor, ...props }) => (
         <View style={{ display: 'flex', flexDirection: 'row', }}>
           <IconButton
-            label={(id && state) ? writeAndress(state) : 'Novo endereço'} 
+            label={id ? writeAndress(state) : 'Novo endereço'} 
             name="expand-more" color={colors.text} size={24}
             onPress={() => BottomHalfModal.show(modalize => 
               <FlatList 

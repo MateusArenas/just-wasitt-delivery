@@ -68,7 +68,7 @@ const Category: React.FC<CategoryProps> = ({ data }) => {
             data={data?.products}
             renderItem={({ item }) => 
               <SafeAreaView style={{ width }}>
-                <TouchableOpacity onPress={() => navigation.navigate('Product', { id: item?.id, store: data?.store?.name })}>
+                <TouchableOpacity onPress={() => navigation.navigate('Product', { slug: item?.slug, store: data?.store?.name })}>
                   <Product data={item}/>
                 </TouchableOpacity>
                 {/* <Product2

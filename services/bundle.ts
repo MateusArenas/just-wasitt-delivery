@@ -21,7 +21,7 @@ export interface bundleData {
   comment?: string
 }
 
-const VERSION = '5.2'
+const VERSION = '5.3'
 
 export async function index ({ store: storeName, userId } : { store: string, userId: string }) : Promise<AxiosResponse<Array<bundleData>>> {
   try {

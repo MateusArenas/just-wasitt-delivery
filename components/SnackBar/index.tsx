@@ -7,6 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, Easing, cancelAnimation, us
 import { TouchableWithoutFeedback } from 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
 import Badge from '../Badge';
+import { useTheme } from '@react-navigation/native';
 
 const IS_ANDROID = Platform.OS === 'android';
 const IS_LT_LOLLIPOP = Platform.Version < 21;
@@ -14,7 +15,8 @@ export interface SnackbarComponentProps {
     ref?: any
     numberOfLines?: number;
     accentColor?: string;
-    actionText?: string;
+    actionText?: string | number;
+    actionIcon?: React.ComponentProps<typeof MaterialIcons>['name'];
     messageColor?: string;
     backgroundColor?: string;
     distanceCallback?: (v: any) => void;
@@ -27,7 +29,7 @@ export interface SnackbarComponentProps {
     top?: number;
     position?: 'top' | 'bottom' | 'right' | 'left';
     textMessage?: string;
-    textSubMessage?: string;
+    textSubMessage?: string | number;
     autoHidingTime?: number;
     visible?: boolean;
     containerStyle?: ViewStyle
@@ -76,6 +78,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   visible= false,
   position= 'bottom',
   actionText= '',
+  actionIcon=null,
   textMessage= '',
   textSubMessage= '',
   autoHidingTime= 0, // Default value will not auto hide the snack bar as the old version.
@@ -93,6 +96,7 @@ const SnackBar: React.FC<SnackbarComponentProps & {  }> = forwardRef(({
   dark=false,
   onLayout,
 }, ref) => {
+  const { colors } = useTheme()
   // const pos = { top, bottom, right, left }
   const timerRef = useRef(null);
 
@@ -222,7 +226,7 @@ return (
       >
           <Animated.View
             style={[
-              containerStyle,
+              containerStyle, 
               styles.container,
               componentAnimStyle,
               {
@@ -238,12 +242,14 @@ return (
               onLayout && onLayout(e)
             }}
           >
-            <BlurView style={[{ borderRadius: 4, overflow: 'hidden', width: '100%' }]} 
+            <BlurView style={[
+              { borderRadius: 4, overflow: 'hidden', width: '100%' },
+              { borderWidth: 1, borderColor: colors.border }
+            ]} 
               intensity={100} tint={dark ? 'dark' : 'light'}
             >
         <TouchableOpacity disabled={!onPress} onPress={() => {
           onPress && onPress()
-          actionHandler && actionHandler()
           actionHide && hideSnackbar()
         }}>
               <View style={[styles.innerContainer]}>
@@ -289,8 +295,8 @@ return (
                   </View>
                   )
                 }
-                {!!actionText ? (
-                    <Touchable disabled={onPress} onPress={() => {
+                {(
+                    <Touchable disabled={!actionHandler} onPress={() => {
                       actionHandler && actionHandler()
                       actionHide && hideSnackbar()
                     }}>
@@ -300,14 +306,21 @@ return (
                             actionStyle,
                             styles.actionText,
                             { color: accentColor },
-                            indicatorIcon ? { paddingEnd: 0 } : {}
+                            indicatorIcon ? { paddingEnd: 0 } : {},
+                            actionIcon ? { paddingEnd: 0 } : {},
                           ]}
                         >
-                          {actionText.toUpperCase()}
+                          {actionText}
                         </Text>
-                        { indicatorIcon &&
+                        { indicatorIcon ? 
                           <MaterialIcons style={{ padding: 10, paddingLeft: 0 }} 
                             name={'chevron-right'} 
+                            color={accentColor} 
+                            size={24} 
+                          />
+                          : !!actionIcon && 
+                          <MaterialIcons style={{ padding: 10, paddingLeft: 0 }} 
+                            name={actionIcon} 
                             color={accentColor} 
                             size={24} 
                           />
@@ -315,7 +328,6 @@ return (
                       </View>
                     </Touchable>
                   )
-                  : null
                 }
               </View>
               </TouchableOpacity>
@@ -343,7 +355,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     position: 'absolute',
-    padding: '5%',
+    padding: 10,
   },
   innerContainer: {
     flex: 1,

@@ -21,6 +21,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useSetSnackBottomOffset } from '../../hooks/useSnackbar';
+import StoreInfo from '../../screens/StoreInfo';
+import Promotion from '../../screens/Promotion';
+import Products from '../../screens/Products';
+import Offers from '../../screens/Offers';
+import Categories from '../../screens/Categories';
+import { buildTitle } from '../../utils';
 
 
 const Stack = createStackNavigator<TabCartParamList>()
@@ -42,8 +48,8 @@ function TabCartNavigator() {
     <Stack.Navigator 
       headerMode={'screen'}
       screenOptions={{ 
+        cardStyle: { flex: 1, backgroundColor: colors.background },
         headerTintColor: colors.text,
-        cardStyle: { backgroundColor: colors.background, flex: 1 },
         headerStyle: { elevation: 0, shadowColor: 'transparent', borderBottomWidth: null },
         headerBackTitleVisible: false,
         headerBackImage: ({ tintColor }) => <MaterialIcons name="chevron-left" size={24*1.5} color={tintColor} />,
@@ -53,87 +59,25 @@ function TabCartNavigator() {
         ),
       }}
     >
-      <Stack.Screen
-        name="Main"
-        component={CartScreen}
-        options={{ 
-          title: 'Pedidos',
-        }}
-      />
-      <Stack.Screen
-        name="Bag"
-        component={Bag}
-        options={({ route }) => ({ 
-          title: 'Sacola',
-        })}
-      />
+      <Stack.Screen name="Main" component={CartScreen} options={{ title: 'Pedidos' }} />
 
-      <Stack.Screen 
-        name="Checkout" 
-        component={Checkout} 
-        options={{
-          title: 'Checagem'
-        }}
-      />
+      <Stack.Screen name="Categories" component={Categories} options={({ route }) => ({ title: `#${route.params?.category}` })} />
+
+      <Stack.Screen name="Store" component={Store} options={({ route }) => ({  title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="StoreInfo" component={StoreInfo} options={({ route }) => ({ title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="Product" component={Product} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Products" component={Products} options={({ route }) => ({ title: buildTitle('Catálogo') })} />
+      <Stack.Screen name="Category" component={Category} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Promotion" component={Promotion} options={({ route }) => ({ title: buildTitle(route.params?.slug) })} />
+      <Stack.Screen name="Offers" component={Offers} options={({ route }) => ({ title: buildTitle(route.params?.store) })} />
+      <Stack.Screen name="Followers" component={Followers} options={{ title: buildTitle('Seguidores') }} />
+      <Stack.Screen name="Feedbacks" component={Feedbacks} options={{ title: buildTitle('Feedbacks') }} />
+      <Stack.Screen name="NewFeedback" component={NewFeedback} options={{ title: buildTitle('Novo Feedback') }} />
+      <Stack.Screen name="Bag" component={Bag} options={{ title: buildTitle('Sacola') }} />
+      <Stack.Screen name="Checkout" component={Checkout} options={{ title: buildTitle('Checagem') }} />
+      <Stack.Screen name="Saved" component={Saved} options={{ title: buildTitle('Salvos') }} />
+      <Stack.Screen name="Favorite" component={Favorite} options={{ title: buildTitle('Favoritos') }} />
       
-      <Stack.Screen 
-        name="Store" 
-        component={Store} 
-        options={({ navigation, route } : StackScreenProps<TabCartParamList, 'Store'> ) => ({
-          title: route.params.store,
-        })} 
-      />
-
-      <Stack.Screen 
-        name="Favorite" 
-        component={Favorite} 
-        options={{
-          title: 'Favoritos'
-        }}
-      />
-      <Stack.Screen 
-        name="Saved" 
-        component={Saved} 
-        options={{
-          title: 'Salvos'
-        }}
-      />
-      <Stack.Screen 
-        name="Followers" 
-        component={Followers} 
-        options={{
-          title: 'Seguidores'
-        }}
-      />
-      <Stack.Screen 
-        name="Feedbacks" 
-        component={Feedbacks} 
-        options={{
-          title: 'Feedbacks'
-        }}
-      />
-
-      <Stack.Screen 
-        name="NewFeedback" 
-        component={NewFeedback} 
-        options={{
-          title: 'Novo Feedback'
-        }}
-      />
-      <Stack.Screen 
-        name="Product" 
-        component={Product}
-        options={{ 
-          title: 'Produto'
-        }}
-      />
-      <Stack.Screen 
-        name="Category" 
-        component={Category}
-        options={{ 
-          title: 'Categoria',
-        }}
-      />
     </Stack.Navigator>
   );
 }

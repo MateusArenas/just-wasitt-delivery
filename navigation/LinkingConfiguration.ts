@@ -17,181 +17,110 @@ export default {
         initialRouteName: 'TabHome',
         screens: {
           TabHome: {
-            path: 'home',
+            path: './',
             initialRouteName: 'Main',
             screens: {
-              Main: {
-                path: ':category',
-                parse: { category: String },
-              }
-            },
+              Main: '',
+              Categories: { path: 'categories/:category', exact: true },
+              Store: { path: 'store/:store', exact: true },
+              StoreInfo: {  path: 'store/:store/info', exact: true },
+              Product: { path: 'store/:store/product/:slug', exact: true },
+              Products: { path: 'store/:store/products', exact: true },
+              Category: { path: 'store/:store/category/:slug', exact: true },
+              Promotion: { path: 'store/:store/promotion/:slug', exact: true },
+              Offers: { path: 'store/:store/offers', exact: true },
+              Followers: { path: 'store/:store/followers', exact: true },
+              Feedbacks: { path: 'store/:store/feedbacks', exact: true },
+              NewFeedback: { path: 'store/:store/new-feedback/:reply?', exact: true },
+              Bag: { path: 'store/:store/bag', exact: true },
+              Checkout: { path: 'store/:store/checkout', exact: true },
+              Saved: 'saved',
+              Favorite: 'favorite',
+            }
           },
           TabExplore: {
-            path: 'explore',
+            path: '././',
             initialRouteName: 'Main',
             screens: {
-              Main: '',
-              Categories: {
-                path: 'categories/:category',
-                parse: { category: String },
-              },
-              Search: {
-                path: 'search',
-                initialRouteName: 'Products',
-                screens: {
-                  Products: 'products',
-                  Stores: 'stores',
-                  Categories: 'categories',
-                }
-              }
-            },
+              Main: 'explore',
+              Categories: 'categories/:category',
+              Store: 'store/:store',
+              StoreInfo: 'store/:store/info',
+              Product: 'store/:store/product/:slug',
+              Products: 'store/:store/products',
+              Category: 'store/:store/category/:slug',
+              Promotion: 'store/:store/promotion/:slug',
+              Offers: 'store/:store/offers',
+              Followers: 'store/:store/followers',
+              Feedbacks: 'store/:store/feedbacks',
+              NewFeedback: 'store/:store/new-feedback/:reply?',
+              Bag: 'store/:store/bag',
+              Checkout: 'store/:store/checkout',
+              Saved: 'saved',
+              Favorite: 'favorite',
+            }
           },
           TabCart: {
-            path: 'cart',
+            path: './././',
+            initialRouteName: 'Main',
             screens: {
-              Main: '',
-              Saved: 'saved',
-              Favorite: 'favorite',
-              Bag: {
-                path: 'store/:store/bag',
-                parse: { store: String },
-              },
-              Checkout: {
-                path: 'store/:store/checkout',
-                parse: { store: String },
-              },
-              Store: {
-                path: 'store/:store',
-                parse: { store: String },
-              },
-              Followers: {
-                path: 'store/:store/followers',
-                parse: { store: String },
-              },
-              Feedbacks: {
-                path: 'store/:store/feedbacks',
-                parse: { store: String },
-              },
-              NewFeedback: {
-                path: 'store/:store/new-feedback/:reply?',
-                parse: { store: String, reply: String },
-              },
-              Category: {
-                path: 'store/:store/category/:id',
-                parse: { store: String, id: String },
-              },
-              Product: {
-                path: 'store/:store/product/:id',
-                parse: { store: String, id: String },
-              },
-            },
+              Main: 'cart',
+              Categories: 'categories/:category',
+              Store: 'store/:store',
+              StoreInfo: 'store/:store/info',
+              Product: 'store/:store/product/:slug',
+              Products: 'store/:store/products',
+              Category: 'store/:store/category/:slug',
+              Promotion: 'store/:store/promotion/:slug',
+              Offers: 'store/:store/offers',
+              Followers: 'store/:store/followers',
+              Feedbacks: 'store/:store/feedbacks',
+              NewFeedback: 'store/:store/new-feedback/:reply?',
+              Bag: 'store/:store/bag',
+              Checkout: 'store/:store/checkout',
+              Saved: { path: 'saved', exact: true },
+              Favorite: { path: 'favorite', exact: true },
+            }
           },
           TabStoreMain: {
-            path: 'main',
+            path: '././././',
             initialRouteName: 'Account',
             screens: {
-              Account: 'account',
+              Account: { path: 'account', exact: true },
+              Categories: 'categories/:category',
+              Store: 'store/:store',
+              StoreInfo: 'store/:store/info',
+              Product: 'store/:store/product/:slug',
+              Products: 'store/:store/products',
+              Category: 'store/:store/category/:slug',
+              Promotion: 'store/:store/promotion/:slug',
+              Offers: 'store/:store/offers',
+              Followers: 'store/:store/followers',
+              Feedbacks: 'store/:store/feedbacks',
+              NewFeedback: 'store/:store/new-feedback/:reply?',
+              Bag: 'store/:store/bag',
+              Checkout: 'store/:store/checkout',
               Saved: 'saved',
               Favorite: 'favorite',
-              Store: {
-                path: 'store/:store',
-                parse: { store: String },
-              },
-              Followers: {
-                path: 'store/:store/followers',
-                parse: { store: String },
-              },
-              Feedbacks: {
-                path: 'store/:store/feedbacks',
-                parse: { store: String },
-              },
-              NewFeedback: {
-                path: 'store/:store/new-feedback/:reply?',
-                parse: { store: String, reply: String },
-              },
-              Category: {
-                path: 'store/:store/category/:id',
-                parse: { store: String, id: String },
-              },
-              Products: {
-                path: 'store/:store/products',
-                parse: { store: String },
-              },
-              Product: {
-                path: 'store/:store/product/:id',
-                parse: { store: String, id: String },
-                // parse: {
-                //   store: String,
-                //   name: name => name.replace(/^-/g, ' '),
-                // },
-                // stringify: {
-                //   store: String,
-                //   name: name => name.replace(/\s/g, '-'),
-                // },
-              },
-              Bag: {
-                path: 'store/:store/bag',
-                parse: { store: String },
-              },
-              Checkout: {
-                path: 'store/:store/checkout',
-                parse: { store: String },
-              },
-            },
+            }
           },
         },
-      },
-      Store: {
-        path: 'store/:store',
-        parse: { store: String },
-      },
-      Offers: {
-        path: 'store/:store/offers',
-        parse: { store: String },
-      },
-      Followers: {
-        path: 'store/:store/followers',
-        parse: { store: String },
-      },
-      Feedbacks: {
-        path: 'store/:store/feedbacks',
-        parse: { store: String },
-      },
-      StoreInfo: {
-        path: 'store/:store/info',
-        parse: { store: String },
-      },
-      Promotion: {
-        path: 'store/:store/promotion/:id',
-        parse: { store: String, id: String },
-      },
-      Category: {
-        path: 'store/:store/category/:id',
-        parse: { store: String, id: String },
-      },
-      Products: {
-        path: 'store/:store/products',
-        parse: { store: String },
-      },
-      Product: {
-        path: 'store/:store/product/:id',
-        parse: { store: String, id: String },
-      },
-      NewFeedback: {
-        path: 'store/:store/new-feedback/:reply?',
-        parse: { store: String, reply: String },
       },
       MakeStore: {
         path: 'make-store/:id?',
         parse: { id: String },
       },
+      MakePromotion: {
+        path: 'store/:store/make/promotion/:slug?',
+        parse: { store: String, slug: String },
+      },
       MakeCategory: {
-        path: 'store/:store/make-category/:id?',
-        parse: { store: String, id: String },
+        path: 'store/:store/make/category/:slug?',
+        parse: { store: String, slug: String },
       },
       MakeProduct: {
-        path: 'store/:store/make-product/:id?',
-        parse: { store: String, id: String },
+        path: 'store/:store/make/product/:slug?',
+        parse: { store: String, slug: String },
       },
       EditAccount: {
         path: 'manage/edit-account/:id',
@@ -205,21 +134,10 @@ export default {
         path: 'store/:store/orders/:id?',
         parse: { store: String, id: String },
       },
-      Bag: {
-        path: 'store/:store/bag',
-        parse: { store: String },
-      },
-      Checkout: {
-        path: 'store/:store/checkout',
-        parse: { store: String },
-      },
       Andress: {
         path: 'andress/:id?',
         parse: { id: String },
       },
-      Saved: 'saved',
-      Favorite: 'favorite',
-      Account: 'account',
       Phone: 'phone',
       SignIn: 'signin',
       SignUp: 'signup',
@@ -227,4 +145,5 @@ export default {
     },
   },
 } as LinkingOptions
+
 

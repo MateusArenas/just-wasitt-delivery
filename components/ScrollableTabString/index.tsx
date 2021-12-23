@@ -9,7 +9,8 @@ import {
     StyleProp,
     View,
     ViewStyle,
-    FlatList
+    FlatList,
+    LayoutChangeEvent
 } from 'react-native';
 import { ViewProps } from '../Themed';
 
@@ -43,7 +44,16 @@ interface ScrollableTabStringProps extends ScrollViewProps {
     headerTransitionWhenScroll?: boolean
     tabPosition?: 'top' | 'bottom'
     renderSection: any
-    renderTabName: any
+    renderTabName: (params: { 
+        item: any, 
+        index: number, 
+        selected: number, 
+        props: {
+            style?: StyleProp<ViewStyle> 
+            onLayout?: (event: LayoutChangeEvent) => void
+            onPress?: () => any
+        } 
+    }) => any
     
     customTabNamesProps?: FlatListProps<any> & any
 
@@ -51,7 +61,7 @@ interface ScrollableTabStringProps extends ScrollViewProps {
     tabNamesContentContainerStyle?: StyleProp<ViewStyle>
     sectionContainerStyle?: StyleProp<ViewStyle> 
     
-    onPressTab?: (item: any, index: number) => any
+    onPressTab?: (item: any, index: number, selected: number) => any
     
     onScrollSection?: (e: any) => any
     indexValue?: number
@@ -61,8 +71,8 @@ interface ScrollableTabStringProps extends ScrollViewProps {
     selectedTabStyle?: StyleProp<ViewStyle> 
     unselectedTabStyle?: StyleProp<ViewStyle>
     tabTopComponent?: React.ReactNode
-    TabContainerComponet?: React.FC<ViewProps>
     TabListHeaderComponent?: React.ReactNode
+    TabNamesContainer?: React.FC<{ style?: StyleProp<ViewStyle> }>
 }
 const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef(({
     headerComponent,
@@ -94,11 +104,11 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
     sectionContainerStyle={
         flexGrow: 1,
     },
-    TabContainerComponet=props => <View {...props}/>,
     scrollIndexEffect,
     indexValue,
     scrollToIndexValue,
     TabListHeaderComponent,
+    TabNamesContainer=props => <View {...props} />,
     ...customSectionProps
 }: ScrollableTabStringProps, ref : React.ForwardedRef<ScrollView>) => {
     const tabNamesRef = useRef<FlatList<any>>(null)
@@ -133,24 +143,25 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
 
     // map tab item
     const dataTabNameChildren = ({ item, index }) : any => {
-        return React.Children.map(
-            React.Children.toArray(renderTabName(item, index)),
-            (children) => React.cloneElement(children as any, {
-                style: { ...(index === selectedScrollIndex) ? selectedTabStyle : unselectedTabStyle as any },
-                onPress: () => {
-                    goToIndex({ ...item, index })
-                    onPressTab && onPressTab(item, index)
+        const props = {
+            style: (index === selectedScrollIndex) ? selectedTabStyle : unselectedTabStyle,
+            onPress: () => {
+                goToIndex({ ...item, index })
+                onPressTab && onPressTab(item, index, selectedScrollIndex)
+            },
+            onLayout: ({
+                nativeEvent: {
+                  layout: { height },
                 },
-                onLayout: ({
-                    nativeEvent: {
-                      layout: { height },
-                    },
-                  }) => {
-                    if (heightTabNames === 0) {
-                        setHeightTabNames(height)
-                    }
+              }) => {
+                if (heightTabNames === 0) {
+                    setHeightTabNames(height)
                 }
-            })
+            }
+        };
+        return React.Children.map(
+            React.Children.toArray(renderTabName({ item, index, selected: selectedScrollIndex, props })),
+            (children) => React.cloneElement(children as any)
         );
     }
 
@@ -242,7 +253,7 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
     // ))
 
     return (
-                <FlatList
+                <FlatList 
                     {...customSectionProps}
                     ref={tabScrollMainRef}
                     onScrollBeginDrag={() => setState(state => ({ ...state, isPressToScroll: false }))}
@@ -259,12 +270,16 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
                     renderItem={({ item, index: i }) => {
                         if (item?.key === 'tab-top') {
                             return (
-                                <View style={[tabNamesContainerStyle]}>
+                                <TabNamesContainer style={[tabNamesContainerStyle]}>
                                     {tabTopComponent}
-                                    <TabContainerComponet>
+                                        <View style={{ 
+                                            flex: 1, flexDirection: 'row',
+                                            alignItems: 'center', justifyContent: 'center' 
+                                        }}>
+                                        {TabListHeaderComponent}
                                         <Animated.FlatList 
-                                            stickyHeaderIndices={[0]}
-                                            ListHeaderComponent={TabListHeaderComponent}
+                                            // stickyHeaderIndices={[0]}
+                                            // ListHeaderComponent={TabListHeaderComponent}
                                             data={dataTabs.map((i, index) => ({ ...i, index }))}
                                             nestedScrollEnabled
                                             keyboardShouldPersistTaps="always"
@@ -279,15 +294,14 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
                                             bounces={false}
                                             horizontal
                                             renderItem={dataTabNameChildren}
-                                        />
-                                    </TabContainerComponet>
-                                </View>
+                                            />
+                                        </View>
+                                </TabNamesContainer>
                             )
                         } else if (item?.key === 'tab-bottom') {
                             return (
-                                <View style={[tabNamesContainerStyle]}>
+                                <TabNamesContainer style={[tabNamesContainerStyle]}>
                                     {tabTopComponent}
-                                    <TabContainerComponet>
                                         <Animated.FlatList
                                             style={{ position: 'absolute', bottom: 0 }}
                                             keyboardShouldPersistTaps="always"
@@ -305,8 +319,7 @@ const ScrollableTabString: React.FC<ScrollableTabStringProps> = React.forwardRef
                                             horizontal
                                             renderItem={dataTabNameChildren}
                                         />
-                                    </TabContainerComponet>
-                                </View>
+                                </TabNamesContainer>
                             )
                         }
                         // return dataSectionsChildren(item, item?.index)

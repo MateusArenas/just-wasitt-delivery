@@ -5,6 +5,8 @@ import { authenticate, register, saveToken, useCanToken, userAndressData, userDa
 import * as Andress from "../services/andress";
 import api from "../services/api";
 import Loading from "../components/Loading";
+import apollo from "../services/apollo";
+import { gql, useMutation } from "@apollo/client";
 
 interface errorData {
   message: string
@@ -32,6 +34,16 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData)
 
 const VERSION = '1.0'
 
+export const CREATE_USER = gql`
+# Increments a back-end counter and gets its resulting value
+mutation CreateUser ($email: String!, $password: String!) {
+  register(email: $email, password: $password) {
+    _id, token, stores { _id, name }, uri, name, email, password, phoneNumber,
+    ceep, city, district, street, houseNumber, complement, state,
+  }
+}
+`;
+
 export const AuthProvider: React.FC = ({ children }) => {
   const [users, setUsers] = usePersistedState<Array<userData>>(`${VERSION}-users-wasit`, [])
   const [user, setUser] = usePersistedState<userData | null>(`${VERSION}-user-wasit`, null)
@@ -49,7 +61,7 @@ export const AuthProvider: React.FC = ({ children }) => {
     stores: undefined,
     uri: undefined,
   }
-  
+
   const [loading, setLoading] = React.useState<boolean>(false)
   const [refresh, setRefresh] = React.useState<boolean>(false)
   const [error, setError] = React.useState<errorData>({} as errorData)
@@ -59,6 +71,7 @@ export const AuthProvider: React.FC = ({ children }) => {
   }, [user])
 
   function signVisitor (refresh?: boolean) {
+    apollo.resetStore()
     refresh ? setRefresh(true) : setLoading(true)
     setUser(visitor)
     setUsers(_users => [..._users.filter(_user => _user?._id !== visitor?._id)])
@@ -70,6 +83,7 @@ export const AuthProvider: React.FC = ({ children }) => {
 
   async function signIn (email?: string, password?: string, refresh?: boolean) {
     try {
+      apollo.resetStore()
       if (!email && !password) return signVisitor(refresh)
       refresh ? setRefresh(true) : setLoading(true)
       const response = await authenticate({ email, password })
@@ -88,6 +102,7 @@ export const AuthProvider: React.FC = ({ children }) => {
 
   async function signUp (email: string, password: string, name: string) {
     try {
+      apollo.resetStore()
       setLoading(true)
       const response = await register({ email, password, name })
       if (!response?.data) setError({ message: 'Erro de conexão!' })
@@ -108,6 +123,7 @@ export const AuthProvider: React.FC = ({ children }) => {
     setUser(null)
     setToken(null)
     setLoading(false)
+    apollo.resetStore()
   }
 
   function removeSign (_id: string) {
@@ -117,6 +133,7 @@ export const AuthProvider: React.FC = ({ children }) => {
       setUsers(users => [...users?.filter(item => item?._id !== _id)])
       setToken(null)
       setLoading(false)
+      apollo.resetStore()
     }
   }
 

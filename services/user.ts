@@ -14,7 +14,7 @@ export async function search () {
   } 
 }
 
-export async function update ({ body } : { body: userData }) {
+export async function update ({ body } : { body: Partial<userData> }) {
   try {
     const response = await api.put(`/users`, body)
     return Promise.resolve(response as AxiosResponse<userData>)

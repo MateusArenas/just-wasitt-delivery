@@ -26,20 +26,20 @@ export type RootStackParamList = {
   Store: { store: string };
   Offers: { store: string };
   StoreInfo: { store: string };
-  Promotion: { store: string, id: string };
-  Category: { store: string, id: string };
+  Promotion: { store: string, slug: string };
+  Category: { store: string, slug: string };
   Products: { store: string };
-  Product: { store: string, id: string };
+  Product: { store: string, slug: string };
 
   MakeStore: { id?: string };
 
   NewFeedback: { store: string, reply?: string };
 
-  MakePromotion: { store: string, id?: string };
+  MakePromotion: { store: string, slug?: string };
 
-  MakeCategory: { store: string, id?: string };
+  MakeCategory: { store: string, slug?: string };
 
-  MakeProduct: { store: string, id?: string };
+  MakeProduct: { store: string, slug?: string };
 
   NewStore: undefined;
   EditStore: { id: string };
@@ -61,50 +61,83 @@ export type TabExploreParamList = {
   Categories: { category: string };
 
   Store: { store: string };
-  Promotion: { store: string, id: string };
-  Category: { store: string, id: string };
+  StoreInfo: { store: string };
+  Product: { store: string, slug: string };
   Products: { store: string };
-  Product: { store: string, id: string };
-};
-
-export type TabHomeParamList = {
-  Main: { category: string };
-};
-
-export type TabCartParamList = {
-  Main: undefined;
+  Category: { store: string, slug: string };
+  Promotion: { store: string, slug: string };
+  Offers: { store: string };
+  Followers: { store: string };
+  Feedbacks: { store: string };
+  NewFeedback: { store: string, reply?: string };
   Bag: { store: string };
   Checkout: { store: string };
   Saved: undefined
   Favorite: undefined
+};
 
+export type TabHomeParamList = {
+  Main: { category: string };
+
+  Categories: { category: string };
+
+  Store: { store: string };
+  StoreInfo: { store: string };
+  Product: { store: string, slug: string };
+  Products: { store: string };
+  Category: { store: string, slug: string };
+  Promotion: { store: string, slug: string };
+  Offers: { store: string };
+  Followers: { store: string };
   Feedbacks: { store: string };
   NewFeedback: { store: string, reply?: string };
-  Followers: { store: string };
+  Bag: { store: string };
+  Checkout: { store: string };
+  Saved: undefined
+  Favorite: undefined
+};
+
+export type TabCartParamList = {
+  Main: undefined;
+
+  Categories: { category: string };
+
   Store: { store: string };
-  Promotion: { store: string, id: string };
-  Category: { store: string, id: string };
+  StoreInfo: { store: string };
+  Product: { store: string, slug: string };
   Products: { store: string };
-  Product: { store: string, id: string };
+  Category: { store: string, slug: string };
+  Promotion: { store: string, slug: string };
+  Offers: { store: string };
+  Followers: { store: string };
+  Feedbacks: { store: string };
+  NewFeedback: { store: string, reply?: string };
+  Bag: { store: string };
+  Checkout: { store: string };
+  Saved: undefined
+  Favorite: undefined
 };
 
 export type TabStoreMainParamList = {
   Main: undefined;
   Account: undefined;
-  Saved: undefined
-  Favorite: undefined
 
-  Bag: { store: string };
-  Checkout: { store: string };
+  Categories: { category: string };
 
+  Store: { store: string };
+  StoreInfo: { store: string };
+  Product: { store: string, slug: string };
+  Products: { store: string };
+  Category: { store: string, slug: string };
+  Promotion: { store: string, slug: string };
+  Offers: { store: string };
+  Followers: { store: string };
   Feedbacks: { store: string };
   NewFeedback: { store: string, reply?: string };
-  Followers: { store: string };
-  Store: { store: string };
-  Promotion: { store: string, id: string };
-  Category: { store: string, id: string };
-  Products: { store: string };
-  Product: { store: string, id: string };
+  Bag: { store: string };
+  Checkout: { store: string };
+  Saved: undefined
+  Favorite: undefined
 };
 
 export type CheckoutStackParamList = {
